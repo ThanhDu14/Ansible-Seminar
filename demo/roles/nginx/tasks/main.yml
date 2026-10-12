@@ -1,0 +1,64 @@
+---
+# 1. Cap nhat danh sach goi apt
+- name: Cap nhat danh sach goi apt
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+# 2. Cai dat Nginx
+- name: Cai dat Nginx web server
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+# 3. Ghi file cau hinh Template Nginx (CHẠY TRƯỚC ĐỂ ĐẢM BẢO CONFIG ĐÚNG)
+- name: Deploy file cau hinh Nginx tu Jinja2 Template
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Nginx
+
+# Tao trang index.html chao muong
+- name: Tao trang index.html mau cho Web Server
+  ansible.builtin.copy:
+    content: |
+      <! formal html >
+      <html>
+      <head><title>Ansible Demo Lab</title></head>
+      <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+        <h1 style="color: #2c3e50;">🚀 Welcome to Nginx Web Server!</h1>
+        <p style="color: #27ae60; font-weight: bold;">Cai dat va cau hinh tu dong 100% bang Ansible Role</p>
+      </body>
+      </html>
+    dest: /var/www/html/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+
+# 4. Dam bao service Nginx khoi chay
+- name: Dam bao Nginx dang chay va khoi dong cung OS
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: yes
+
+# 5. Vault Debug Task
+- name: In ra thong bao kiem tra bien tu Vault
+  ansible.builtin.debug:
+    msg: "Da doc thanh cong Secret Key dai {{ api_secret_key | length }} ky tu tu Ansible Vault!"
+
+- name: "[NON-IDEMPOTENT] Ghi append du lieu vao file bang shell"
+  ansible.builtin.shell: echo "Data row entry" >> /tmp/idempotency_demo.txt
+
+
+# 6. Idempotency Demo Task
+- name: "[IDEMPOTENT] Ghi du lieu chuan Ansible Idempotency"
+  ansible.builtin.lineinfile:
+    path: /tmp/idempotency_demo_fixed.txt
+    line: "Log Entry - Standardized Data Row"
+    create: yes
+    state: present

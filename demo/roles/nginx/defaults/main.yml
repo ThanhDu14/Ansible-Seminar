@@ -1,0 +1,5 @@
+---
+http_port: 80
+server_name: "demo.ansible.lab"
+document_root: "/var/www/html"
+

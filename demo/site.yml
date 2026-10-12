@@ -1,0 +1,9 @@
+---
+- name: Trien khai Nginx va Thuc hien cac Demo Lab
+  hosts: webservers
+  become: yes
+  vars_files:
+    - roles/nginx/vars/vault.yml
+
+  roles:
+    - nginx
