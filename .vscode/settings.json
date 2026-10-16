@@ -1,0 +1,20 @@
+{
+  // LaTeX Workshop: biên dịch bằng tectonic (có shell-escape cho minted)
+  "latex-workshop.latex.tools": [
+    {
+      "name": "tectonic",
+      "command": "/home/thanhdu/.local/bin/tectonic",
+      "args": ["-Z", "shell-escape", "--synctex", "--keep-logs", "%DOC_EXT%"],
+      "env": {}
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    { "name": "tectonic", "tools": ["tectonic"] }
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.view.pdf.tab.editorGroup": "right",
+  "latex-workshop.latex.autoClean.run": "never",
+  "latex-workshop.message.warning.show": false
+}

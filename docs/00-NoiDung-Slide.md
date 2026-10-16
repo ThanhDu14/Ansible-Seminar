@@ -346,86 +346,9 @@ Lưu ý: phải xoá file trước bước 2, nếu không `lineinfile` thấy d
 
 **Slide 29. Mindmap kiến thức Ansible**
 
-```mermaid
-mindmap
-  root((Ansible))
-    Vì sao cần
-      Configuration drift
-      Snowflake server
-      Infrastructure as Code
-    Kiến trúc Agentless
-      Control Node
-        ansible-core
-        Inventory, playbook, private key
-      Managed Node
-        SSH server
-        Python
-      Luồng chạy task
-        SSH, đẩy module
-        Chạy bằng Python
-        Trả JSON, xoá file tạm
-      SSH key và become
-    Thành phần
-      Inventory
-        Nhóm host
-        group_vars, host_vars
-      Playbook
-        Play
-        Task
-      Module
-        apt, copy, lineinfile
-        systemd_service, template
-      Role
-        tasks, handlers
-        templates, files
-        defaults, vars
-      Template Jinja2
-        Biến
-        if, for
-        Filter
-      Handler
-        notify khi changed
-        Chạy cuối play, 1 lần
-    Idempotence
-      Desired state
-      ok, changed, failed, skipped
-      check và diff
-    Module chuyên dụng vs shell
-      command vs shell
-      shell luôn changed
-      creates, changed_when
-    Ansible Vault
-      AES256
-      create, edit, view, rekey
-      vault.yml và tiền tố vault_
-      no_log
-```
+![Mindmap kiến thức Ansible](../slides/mindmap-ansible.png)
 
-Bản ASCII (dùng khi công cụ làm slide không vẽ được Mermaid):
 
-```
-                                   ┌─ Vì sao cần ──── drift · snowflake server · IaC
-                                   │
-                                   ├─ Agentless ───── Control Node (ansible-core)
-                                   │                  Managed Node (SSH + Python)
-                                   │                  SSH → đẩy module → JSON → dọn file tạm
-                                   │                  SSH key · become
-                                   │
-                                   ├─ Thành phần ──── Inventory (nhóm, group_vars/host_vars)
-                                   │                  Playbook → Play → Task → Module
-                                   │                  Role (tasks/handlers/templates/defaults/vars)
-              ┌─────────┐          │                  Template Jinja2 ({{ }}, if/for, filter)
-              │ ANSIBLE │──────────┤                  Handler (notify khi changed, chạy 1 lần)
-              └─────────┘          │
-                                   ├─ Idempotence ─── desired state · ok/changed/failed/skipped
-                                   │                  --check · --diff
-                                   │
-                                   ├─ Module vs Shell ─ command vs shell · shell luôn changed
-                                   │                    creates · changed_when
-                                   │
-                                   └─ Vault ───────── AES256 · create/edit/view/rekey
-                                                      vault.yml + tiền tố vault_ · no_log
-```
 
 **Slide dự phòng (chỉ mở khi bị hỏi)**
 - Handler nâng cao: `listen` (gom handler theo topic), `meta: flush_handlers` (chạy ngay), `force_handlers` (chạy dù task sau lỗi).

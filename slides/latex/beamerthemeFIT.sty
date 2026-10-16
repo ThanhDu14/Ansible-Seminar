@@ -1,0 +1,194 @@
+% =====================================================================
+%  beamerthemeFIT.sty — theme mô phỏng mẫu slide FIT@HCMUS (ITERATOR.pdf)
+%  Biên dịch bằng XeLaTeX (tectonic hoặc latexmk -xelatex).
+% =====================================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{beamerthemeFIT}[2026/10/16 FIT@HCMUS-like beamer theme]
+
+\RequirePackage{fontspec}
+\RequirePackage{tikz}
+\RequirePackage[most]{tcolorbox}
+\tcbuselibrary{minted}
+\RequirePackage{minted}
+\RequirePackage{tabularx}
+\RequirePackage{colortbl}
+\RequirePackage{array}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds}
+
+% ---------------------------------------------------------------------
+%  Màu sắc
+% ---------------------------------------------------------------------
+\definecolor{fitBlue}{RGB}{22,73,160}     % thanh tiêu đề, ô đang chọn
+\definecolor{fitNavy}{RGB}{16,48,110}     % footer trái
+\definecolor{fitBright}{RGB}{24,96,210}   % footer phải
+\definecolor{fitGray}{RGB}{190,190,190}   % ô mục lục chưa chọn
+\definecolor{fitLight}{RGB}{234,240,250}  % nền code / dòng bảng
+\definecolor{fitText}{RGB}{20,20,20}
+\definecolor{fitCode}{RGB}{176,38,64}     % code inline
+\definecolor{fitComment}{RGB}{110,120,130}
+\definecolor{fitString}{RGB}{196,96,0}
+\definecolor{fitGreen}{RGB}{46,140,70}
+\definecolor{fitRed}{RGB}{200,40,40}
+
+% ---------------------------------------------------------------------
+%  Font (Carlito = bản mã nguồn mở tương thích metric với Calibri)
+% ---------------------------------------------------------------------
+\setsansfont{Carlito}[Extension=.ttf, UprightFont=*-Regular, BoldFont=*-Bold,
+  ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setmainfont{Carlito}[Extension=.ttf, UprightFont=*-Regular, BoldFont=*-Bold,
+  ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setmonofont{Liberation Mono}[Scale=0.9]   % có đủ dấu tiếng Việt + ký tự khung ├ └ ─
+
+% ---------------------------------------------------------------------
+%  Bố cục chung
+% ---------------------------------------------------------------------
+\setbeamertemplate{navigation symbols}{}
+\setbeamersize{text margin left=0.7cm, text margin right=0.7cm}
+\setbeamercolor{normal text}{fg=fitText,bg=white}
+\setbeamercolor{structure}{fg=fitBlue}
+\setbeamercolor{alerted text}{fg=fitCode}
+\setbeamerfont{normal text}{size=\normalsize}
+
+% Thanh tiêu đề xanh tràn ngang
+\setbeamercolor{frametitle}{fg=white,bg=fitBlue}
+\setbeamerfont{frametitle}{size=\Large,series=\bfseries}
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip
+  \begin{beamercolorbox}[wd=\paperwidth,ht=0.78cm,dp=0.26cm,leftskip=0.3cm,rightskip=0.3cm]{frametitle}%
+    \usebeamerfont{frametitle}\insertframetitle
+  \end{beamercolorbox}%
+  \vspace{0.15cm}%
+}
+
+% Footer 3 khối: Nhóm | MSSV | Page
+\setbeamercolor{foot left}{fg=white,bg=fitNavy}
+\setbeamercolor{foot mid}{fg=white,bg=fitBlue}
+\setbeamercolor{foot right}{fg=white,bg=fitBright}
+\setbeamertemplate{footline}{%
+  \hspace*{0.12cm}%
+  \begin{beamercolorbox}[wd=0.29\paperwidth,ht=0.36cm,dp=0.14cm,leftskip=0.2cm]{foot left}%
+    \tiny\fitgroup
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=0.42\paperwidth,ht=0.36cm,dp=0.14cm,center]{foot mid}%
+    \tiny\fitids
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=\dimexpr0.29\paperwidth-0.24cm\relax,ht=0.36cm,dp=0.14cm,rightskip=0.2cm]{foot right}%
+    \hfill\tiny Page \insertframenumber
+  \end{beamercolorbox}%
+  \vspace*{0.12cm}%
+}
+
+% Danh sách: chấm tròn đen, mục con gạch ngang, đánh số tròn xanh
+\setbeamertemplate{itemize item}{\color{fitText}\textbullet}
+\setbeamertemplate{itemize subitem}{\color{fitText}\textendash}
+\setbeamertemplate{enumerate item}{%
+  \tikz[baseline=(n.base)]\node[circle,fill=fitBlue,text=white,inner sep=1.2pt,
+    minimum size=1.15em,font=\scriptsize\bfseries](n){\insertenumlabel};}
+\setlength{\leftmargini}{1.2em}
+
+% ---------------------------------------------------------------------
+%  Trang bìa & trang cảm ơn
+% ---------------------------------------------------------------------
+\tcbset{fitpanel/.style={enhanced, colback=fitBlue, colframe=fitBlue, arc=5mm,
+  boxrule=0pt, halign=center, valign=center, coltext=white,
+  drop fuzzy shadow southeast=black!45}}
+
+% Giá trị mặc định: file chính không khai báo thì vẫn biên dịch được
+\AtBeginDocument{%
+  \providecommand{\fitgroup}{}%
+  \providecommand{\fitids}{}%
+  \providecommand{\fitlecturer}{}%
+  \providecommand{\fitmembers}{}%
+  \providecommand{\fittagline}{Agentless · Idempotent · Infrastructure as Code}%
+}
+
+\newcommand{\fittitleframe}{%
+  \begin{frame}
+    \centering
+    \vspace*{0.1cm}
+    \includegraphics[height=1.35cm]{images/logo-fit.png}\par
+    \vspace{0.45cm}
+    \begin{tcolorbox}[fitpanel, width=0.76\paperwidth, height=2.45cm]
+      {\small\bfseries\insertsubtitle}\par\vspace{0.25cm}
+      {\LARGE\bfseries\inserttitle}\par\vspace{0.15cm}
+      {\footnotesize\fittagline}
+    \end{tcolorbox}
+    \vspace{0.45cm}
+    {\normalsize Giảng viên hướng dẫn: \fitlecturer\par
+     Sinh viên thực hiện:\par \fitmembers\par}
+    \vfill
+  \end{frame}%
+}
+
+\newcommand{\fitthanksframe}[1]{%
+  \begin{frame}
+    \centering
+    \vspace*{0.4cm}
+    \includegraphics[height=1.2cm]{images/logo-fit.png}\par
+    \vspace{0.6cm}
+    \begin{tcolorbox}[fitpanel, width=0.7\paperwidth, height=1.9cm]
+      {\Large\bfseries #1}
+    \end{tcolorbox}
+    \vfill
+  \end{frame}%
+}
+
+% ---------------------------------------------------------------------
+%  Slide mục lục: tự chèn đầu mỗi \section, tô xanh mục hiện tại
+%  Danh sách tiêu đề lấy từ \fitagendaitems (định nghĩa trong file chính)
+% ---------------------------------------------------------------------
+\newcommand{\fitagenda}[1]{%
+  \begin{frame}
+    \vfill
+    \centering
+    \begin{tikzpicture}[
+        num/.style={rounded corners=2pt, minimum width=0.85cm, minimum height=0.68cm,
+          text=white, font=\small\bfseries},
+        lab/.style={rounded corners=2pt, minimum width=5.4cm, minimum height=0.68cm,
+          text=white, font=\small}]
+      \foreach \t [count=\i] in \fitagendaitems {
+        \pgfmathtruncatemacro{\col}{mod(\i-1,2)}
+        \pgfmathtruncatemacro{\row}{div(\i-1,2)}
+        \ifnum\i=#1\relax\def\fc{fitBlue}\else\def\fc{fitGray}\fi
+        \node[num, fill=\fc] (n\i) at (\col*7.3, -\row*1.2) {\ifnum\i<10 0\fi\i};
+        \node[lab, fill=\fc, right=0.25cm of n\i] {\t};
+      }
+    \end{tikzpicture}
+    \vfill
+  \end{frame}%
+}
+\AtBeginSection[]{\fitagenda{\value{section}}}
+
+% ---------------------------------------------------------------------
+%  Code: tô màu bằng minted (Pygments) — cần biên dịch với shell-escape
+%  Khối code có nền nhạt + vạch xanh bên trái.  Dùng: \begin{codeblock}{yaml}
+% ---------------------------------------------------------------------
+\usemintedstyle{friendly}
+\newtcblisting{codeblock}[2][]{enhanced, listing only, listing engine=minted,
+  minted language=#2,
+  minted options={fontsize=\footnotesize, baselinestretch=1, breaklines=false},
+  colback=fitLight, colframe=fitLight, borderline west={2pt}{0pt}{fitBlue},
+  arc=1pt, boxrule=0pt, left=4pt, right=3pt, top=1pt, bottom=1pt,
+  before skip=3pt, after skip=3pt, #1}
+
+% Code inline (tự escape ký tự đặc biệt khi viết: \_ \$ \# \% \{ \})
+\newcommand{\code}[1]{\leavevmode{\ttfamily\color{fitCode}#1}}
+
+% ---------------------------------------------------------------------
+%  Bảng: hàng tiêu đề xanh, các hàng xen kẽ nền nhạt
+% ---------------------------------------------------------------------
+\renewcommand{\tabularxcolumn}[1]{m{#1}}   % ô X căn giữa theo chiều dọc
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\hd}[1]{\textcolor{white}{\bfseries #1}}
+\newenvironment{fittable}[1]{%
+  \par\small\renewcommand{\arraystretch}{1.3}%
+  \rowcolors{2}{fitLight}{white}%
+  \tabularx{\linewidth}{#1}\rowcolor{fitBlue}}%
+  {\endtabularx\par}
+
+% Hộp ghi chú nhỏ
+\newtcolorbox{fitnote}[1][]{enhanced, colback=fitLight, colframe=fitBlue, boxrule=0pt,
+  borderline west={2.5pt}{0pt}{fitBlue}, arc=1pt, left=5pt, right=4pt, top=2pt,
+  bottom=2pt, fontupper=\small, #1}
+
+\endinput
