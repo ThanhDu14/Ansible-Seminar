@@ -1,6 +1,8 @@
+% !TEX program = xelatex
+% !TEX options = -shell-escape -synctex=1 -interaction=nonstopmode -file-line-error "%DOC%"
 % =====================================================================
 %  Seminar Ansible Configuration Management — slide Beamer
-%  Nội dung: docs/00-NoiDung-Slide.md   ·   Theme: beamerthemeFIT.sty
+%  Theme: beamerthemeFIT.sty
 %  Biên dịch:  make        (hoặc: tectonic ansible-seminar.tex)
 % =====================================================================
 \documentclass[aspectratio=169,11pt,xcolor=table]{beamer}
@@ -8,7 +10,7 @@
 
 % ----------------------- THÔNG TIN NHÓM (sửa tại đây) ----------------
 \newcommand{\fitgroup}{Nhóm 9}
-\newcommand{\fitids}{24120184 - 24120294 - 24120288 -}
+\newcommand{\fitids}{24120184 - 24120294 - 24120288} % TODO: bổ sung 2 MSSV còn thiếu
 \newcommand{\fitlecturer}{Lê Hà Minh}
 \newcommand{\fitmembers}{Lê Quốc Hưng, Nguyễn Đức Duy, Nguyễn Thành Dự, Âu Bảo Trân, Mai Thúc Hải Đăng}
 \title{ANSIBLE CONFIGURATION MANAGEMENT}
@@ -36,9 +38,7 @@
 
 \begin{frame}{Bài toán: từ 1 server lên 50 server}
   \centering
-  \textbf{1 server} $\rightarrow$ \textbf{50 server}, nhưng vẫn SSH vào từng máy và sửa bằng tay
-  \par\vspace{0.2cm}
-  \includegraphics[height=0.74\textheight]{images/baitoan.png}
+  \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{images/baitoan.png}
 \end{frame}
 
 \begin{frame}{Thử giải bằng tay và bằng script bash}
@@ -96,7 +96,7 @@
 
 \begin{frame}{Ansible ra đời (2012)}
   \centering
-  \includegraphics[height=0.84\textheight]{images/Ansible-radoi.png}
+  \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{images/Ansible-radoi.png}
 \end{frame}
 
 % =====================================================================
@@ -138,10 +138,9 @@
   \end{tikzpicture}
 \end{frame}
 
-\begin{frame}{Có agent vs Agentless}
+\begin{frame}{Agent vs Agentless}
   \centering
-  % trim = trái dưới phải trên (px): bỏ dải logo/DeHaan ở đầu ảnh
-  \includegraphics[height=0.83\textheight, trim=0 0 0 150, clip]{images/SoSanh.png}
+  \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{images/SoSanh.png}
 \end{frame}
 
 \begin{frame}{Yêu cầu của Control Node và Managed Node}
@@ -160,6 +159,8 @@
           Managed Node có thể là Windows.
     \item Module \code{raw} chạy được cả khi máy đích chưa có Python
           $\rightarrow$ dùng để cài Python lần đầu.
+    \item \code{become: true} = chạy bằng \code{sudo}; \textbf{không tự cấp quyền} sudo
+          (\code{-K} để nhập mật khẩu sudo).
   \end{itemize}
 \end{frame}
 
@@ -233,8 +234,6 @@ private_key_file = ~/.ssh/ansible_lab
   \begin{itemize}\small
     \item Private key \textbf{không bao giờ rời control node}; public key nằm trong
           \code{authorized\_keys} của máy đích.
-    \item \code{become: true} = chạy bằng \code{sudo}; \textbf{không tự cấp quyền} sudo.
-          \code{-K} hỏi mật khẩu sudo.
   \end{itemize}
 \end{frame}
 
@@ -313,10 +312,13 @@ managed ansible_host=192.168.56.20
               \code{tasks} (chạy từ trên xuống), \code{handlers}.
         \item \textbf{Task} = \code{name} + module + tham số; hay kèm
               \code{when}, \code{loop}, \code{register}, \code{notify}.
+        \item \code{ansible.builtin.apt} = tên đầy đủ \textbf{(FQCN)}:
+              collection \code{ansible.builtin} + module \code{apt}.
         \item \textbf{YAML}: thụt lề bằng \textbf{space}, \code{key: value},
-              list bắt đầu \code{- }.
-        \item \textbf{Ad-hoc} (\code{ansible web -m ping}) = 1 lệnh dùng ngay;
-              \textbf{playbook} = lưu Git, chạy lại được.
+              list dùng \mbox{\code{-}.}
+        \item \textbf{Ad-hoc} (\code{ansible web -m ping}): chạy \textbf{1 module, 1 lần}
+              từ dòng lệnh, không cần file. \textbf{Playbook}: nhiều task, lưu Git,
+              chạy lại được.
       \end{itemize}
     \end{column}
   \end{columns}
@@ -339,7 +341,8 @@ roles/nginx/
       \begin{itemize}\setlength{\itemsep}{0.35cm}
         \item Role \textbf{không tự chạy}; playbook gọi bằng \code{roles: [nginx]}.
         \item Ưu tiên biến:\\
-              \code{defaults} < \code{group\_vars} < \code{host\_vars} < \code{-e}\\
+              \code{defaults} < \code{group\_vars} < \code{host\_vars}
+              < \code{vars} (role) < \code{-e}\\
               (extra vars \textbf{luôn thắng}).
       \end{itemize}
     \end{column}
@@ -447,6 +450,7 @@ server {
         ok & Thành công (bao gồm cả \code{changed}) \\
         changed & Đã thay đổi máy đích \\
         failed & Lỗi, dừng play trên host đó \\
+        unreachable & Không SSH được tới host \\
         skipped & \code{when} trả về false \\
       \end{fittable}
     \end{column}
@@ -527,7 +531,8 @@ server {
   \begin{itemize}\setlength{\itemsep}{0.35cm}
     \item Secret để \textbf{plain text} trong Git sẽ \textbf{lộ vĩnh viễn} (Git nhớ lịch sử).
     \item Vault mã hoá \textbf{AES256} $\rightarrow$ secret vẫn nằm trong Git nhưng đã mã hoá.
-    \item Lệnh: \code{create}, \code{encrypt}, \code{view}, \code{edit}, \code{decrypt}, \code{rekey}.
+    \item Lệnh: \code{create}, \code{encrypt}, \code{view}, \code{edit}, \code{decrypt}, \code{rekey};
+          \code{encrypt\_string} mã hoá \textbf{từng giá trị} (tên biến vẫn đọc được).
     \item Chạy: \code{-{}-ask-vault-pass} (chạy tay) hoặc \code{-{}-vault-password-file}
           (tự động; file \code{chmod 600} + \code{.gitignore}).
   \end{itemize}
@@ -616,22 +621,9 @@ group_vars/web/
 
 \begin{frame}{Mindmap kiến thức Ansible}
   \centering
-  \includegraphics[height=0.83\textheight]{images/mindmap-ansible.png}
+  \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{images/mindmap-ansible.png}
 \end{frame}
 
 \fitthanksframe{Cảm ơn thầy và các bạn đã lắng nghe!}
-
-% =====================================================================
-%  Slide dự phòng (chỉ mở khi bị hỏi)
-% =====================================================================
-\appendix
-\begin{frame}{Slide dự phòng}
-  \begin{itemize}\setlength{\itemsep}{0.35cm}
-    \item \textbf{Handler nâng cao}: \code{listen} (gom handler theo topic),
-          \code{meta: flush\_handlers} (chạy ngay), \code{force\_handlers} (chạy dù task sau lỗi).
-    \item \code{reloaded} (HUP, không downtime) vs \code{restarted} (dừng rồi chạy lại).
-    \item \code{encrypt\_string}: mã hoá từng giá trị, tên biến vẫn đọc được.
-  \end{itemize}
-\end{frame}
 
 \end{document}
