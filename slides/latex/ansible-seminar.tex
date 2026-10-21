@@ -10,7 +10,7 @@
 
 % ----------------------- THÔNG TIN NHÓM (sửa tại đây) ----------------
 \newcommand{\fitgroup}{Nhóm 9}
-\newcommand{\fitids}{24120184 - 24120294 - 24120288} % TODO: bổ sung 2 MSSV còn thiếu
+\newcommand{\fitids}{24120184 - 24120294 - 24120288 - 24120468} % TODO: bổ sung 1 MSSV còn thiếu
 \newcommand{\fitlecturer}{Lê Hà Minh}
 \newcommand{\fitmembers}{Lê Quốc Hưng, Nguyễn Đức Duy, Nguyễn Thành Dự, Âu Bảo Trân, Mai Thúc Hải Đăng}
 \title{ANSIBLE CONFIGURATION MANAGEMENT}
@@ -200,13 +200,13 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]{Lab \& SSH key}
+\begin{frame}[fragile]{Kết nối SSH key}
   \centering
   \begin{tikzpicture}[
       nd/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
         font=\scriptsize, minimum width=4.1cm, minimum height=0.85cm}]
-    \node[nd] (c) {\textbf{control} 192.168.56.10\\ansible-core, key};
-    \node[nd, right=2.6cm of c] (m) {\textbf{managed} 192.168.56.20\\sshd, python3, sudo};
+    \node[nd] (c) {\textbf{Control Node}\\ansible-core, private key};
+    \node[nd, right=2.6cm of c] (m) {\textbf{Managed Node} \code{<managed-ip>}\\ví dụ: 54.255.185.187};
     \draw[-{Stealth[length=2.5mm]}, very thick, fitBlue] (c) -- node[above, font=\scriptsize]
       {SSH (TCP 22)} (m);
   \end{tikzpicture}
@@ -215,18 +215,20 @@
     \begin{column}{0.58\textwidth}
 \begin{codeblock}[minted options={fontsize=\tiny}]{bash}
 ssh-keygen -t ed25519 -f ~/.ssh/ansible_lab
-ssh-copy-id -i ~/.ssh/ansible_lab.pub student@192.168.56.20
-ansible web -m ansible.builtin.ping
+ssh-copy-id -i ~/.ssh/ansible_lab.pub ubuntu@54.255.185.187
+ansible webservers -i inventory -m ansible.builtin.ping
 # "pong" = SSH + Python OK (không phải ICMP)
 \end{codeblock}
     \end{column}
     \begin{column}{0.4\textwidth}
 \begin{codeblock}[minted options={fontsize=\tiny}]{ini}
-# ansible.cfg
-[defaults]
-inventory = inventory.ini
-remote_user = student
-private_key_file = ~/.ssh/ansible_lab
+# inventory
+[webservers]
+node1 ansible_host=54.255.185.187
+
+[webservers:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/ansible_lab
 \end{codeblock}
     \end{column}
   \end{columns}
@@ -242,43 +244,55 @@ private_key_file = ~/.ssh/ansible_lab
 % =====================================================================
 
 \begin{frame}{Bức tranh tổng thể}
-  \centering\vspace{0.4cm}
-  \resizebox{\linewidth}{!}{%
+  \centering\vspace{0.15cm}
   \begin{tikzpicture}[
       nd/.style={rounded corners=3pt, fill=fitBlue, text=white, font=\small\bfseries,
-        minimum height=0.75cm, minimum width=2.3cm, align=center},
+        minimum height=0.8cm, minimum width=2.5cm, align=center},
       tk/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, font=\small,
-        minimum height=0.6cm, minimum width=1.4cm},
-      md/.style={font=\small\ttfamily, text=fitCode},
+        minimum height=0.65cm, minimum width=1.5cm},
+      md/.style={rounded corners=2pt, draw=fitBlue!55, fill=white,
+        font=\scriptsize\ttfamily, text=fitCode, minimum height=0.6cm,
+        text width=3.2cm, align=center},
       ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
     \node[nd] (inv) at (0,0) {Inventory};
-    \node[nd] (pb) at (3.2,0) {Playbook};
-    \node[nd, text width=2.7cm] (play) at (6.8,0) {Play\\[-2pt]{\scriptsize\mdseries nhóm máy + danh sách việc}};
+    \node[nd] (pb) at (2.8,0) {Playbook};
+    \node[nd, text width=3.2cm] (play) at (6.0,0)
+      {Play\\[-2pt]{\scriptsize\mdseries nhóm máy + role cần chạy}};
     \draw[ar] (inv) -- (pb); \draw[ar] (pb) -- (play);
-    \foreach \m/\y [count=\i] in {apt/-1.3, template/-2.2, systemd\_service/-3.1} {
-      \node[tk] (t\i) at (8.6,\y) {Task};
-      \node[md, right=0.7cm of t\i] (m\i) {module \m};
+
+    \foreach \m/\y [count=\i] in {apt/-1.5, template/-2.45, service/-3.4} {
+      \node[tk] (t\i) at (4.0,\y) {Task \i};
+      \node[md] (m\i) at (7.2,\y) {module \m};
       \draw[ar] (t\i) -- (m\i);
-      \draw[thick, fitBlue] (play.south) |- (t\i.west);
+      % đường nối đi dọc bên trái các Task, rồi rẽ vào mép trái Task
+      \draw[thick, fitBlue] ([xshift=-1.2cm]play.south west) |- (t\i.west);
     }
-    \node[nd, fill=fitGreen] (h) at (15.4,-2.2) {Handler};
-    \draw[ar, fitGreen] (m2) -- node[above, font=\scriptsize\itshape, text=fitGreen]{notify} (h);
+    % thân dọc nối từ Play xuống
+    \draw[thick, fitBlue] (play.west) -| ([xshift=-1.2cm]play.south west);
+
+    \node[nd, fill=fitGreen] (h) at (10.5,-2.45) {Handler};
+    \draw[ar, fitGreen] (m2.east) -- (h.west);
+    \node[font=\scriptsize\itshape, text=fitGreen, above=0.05cm of h] {notify};
+
     % Role
     \begin{scope}[on background layer]
-      \node[draw=fitBlue, dashed, rounded corners=5pt, fit=(t1)(m3)(h), inner sep=0.25cm] (role) {};
+      \node[draw=fitBlue, dashed, rounded corners=5pt, fit=(t1)(m3)(h), inner sep=0.3cm] (role) {};
     \end{scope}
-    \node[anchor=north, font=\small, align=center] at (role.south)
+    \node[anchor=north, font=\small, align=center] at ([yshift=-0.1cm]role.south)
       {\textbf{Role} = đóng gói tasks / handlers / templates / vars thành thư mục chuẩn};
-  \end{tikzpicture}}
+  \end{tikzpicture}
 \end{frame}
 
 \begin{frame}[fragile]{Inventory}
   \begin{columns}[c]
     \begin{column}{0.42\textwidth}
 \begin{codeblock}{ini}
-# inventory.ini
-[web]
-managed ansible_host=192.168.56.20
+# inventory
+[webservers]
+node1 ansible_host=54.255.185.187
+
+[webservers:vars]
+ansible_user=ubuntu
 \end{codeblock}
     \end{column}
     \begin{column}{0.54\textwidth}
@@ -297,7 +311,7 @@ managed ansible_host=192.168.56.20
     \begin{column}{0.4\textwidth}
 \begin{codeblock}{yaml}
 - name: Cài nginx
-  hosts: web
+  hosts: webservers
   become: true
   tasks:
     - name: Đảm bảo nginx đã cài
@@ -316,7 +330,7 @@ managed ansible_host=192.168.56.20
               collection \code{ansible.builtin} + module \code{apt}.
         \item \textbf{YAML}: thụt lề bằng \textbf{space}, \code{key: value},
               list dùng \mbox{\code{-}.}
-        \item \textbf{Ad-hoc} (\code{ansible web -m ping}): chạy \textbf{1 module, 1 lần}
+        \item \textbf{Ad-hoc} (\code{ansible webservers -i inventory -m ping}): chạy \textbf{1 module, 1 lần}
               từ dòng lệnh, không cần file. \textbf{Playbook}: nhiều task, lưu Git,
               chạy lại được.
       \end{itemize}
@@ -329,17 +343,17 @@ managed ansible_host=192.168.56.20
     \begin{column}{0.56\textwidth}
 \begin{codeblock}[minted options={fontsize=\scriptsize}]{text}
 roles/nginx/
-├── tasks/main.yml      # task chính
-├── handlers/main.yml   # handler
-├── templates/          # file .j2
-├── files/              # file tĩnh
-├── defaults/main.yml   # biến mặc định — dễ ghi đè
-└── vars/main.yml       # biến cố định của role
+├── defaults/main.yml       # biến mặc định
+├── handlers/main.yml       # handler restart Nginx
+├── tasks/main.yml          # các task triển khai
+├── templates/nginx.conf.j2 # template cấu hình
+└── vars/vault.yml          # secret đã mã hoá
 \end{codeblock}
     \end{column}
     \begin{column}{0.4\textwidth}
       \begin{itemize}\setlength{\itemsep}{0.35cm}
-        \item Role \textbf{không tự chạy}; playbook gọi bằng \code{roles: [nginx]}.
+        \item Role \textbf{không tự chạy}; \code{site.yml} gọi bằng \code{roles: [nginx]}.
+        \item File Vault được nạp qua \code{vars\_files} trước khi role chạy.
         \item Ưu tiên biến:\\
               \code{defaults} < \code{group\_vars} < \code{host\_vars}
               < \code{vars} (role) < \code{-e}\\
@@ -368,13 +382,12 @@ roles/nginx/
     \begin{column}{0.46\textwidth}
 \begin{codeblock}[minted options={fontsize=\scriptsize}]{jinja}
 server {
-    listen {{ nginx_port | default(80) }};
+    listen {{ http_port }} default_server;
     server_name {{ server_name }};
-{% for loc in locations %}
-    location {{ loc.path }} {
-        proxy_pass {{ loc.backend }};
+    root {{ document_root }};
+    location / {
+        try_files $uri $uri/ =404;
     }
-{% endfor %}
 }
 \end{codeblock}
     \end{column}
@@ -397,17 +410,17 @@ server {
       \end{fitnote}
     \end{column}
     \begin{column}{0.46\textwidth}
-\begin{codeblock}{yaml}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
 - name: Render nginx.conf
   ansible.builtin.template:
     src: nginx.conf.j2
-    dest: /etc/nginx/nginx.conf
-    validate: nginx -t -c %s
-  notify: Restart nginx
+    dest: >-
+      /etc/nginx/sites-available/default
+  notify: Restart Nginx
 
 # handlers/main.yml
-- name: Restart nginx
-  ansible.builtin.systemd_service:
+- name: Restart Nginx
+  ansible.builtin.service:
     name: nginx
     state: restarted
 \end{codeblock}
@@ -562,7 +575,8 @@ group_vars/web/
     \item \code{ansible web -m ping} $\rightarrow$ chứng minh SSH key hoạt động.
     \item \code{ansible-playbook site.yml} $\rightarrow$ role \code{nginx}: cài gói,
           render template, \code{started + enabled}.
-    \item Chạy lại $\rightarrow$ \code{changed=0}, \textbf{handler không chạy}.
+    \item Chạy lại \textbf{riêng phần triển khai Nginx} (tạm bỏ task \code{shell} của Demo 4)
+          $\rightarrow$ \code{changed=0}, \textbf{handler không chạy}.
     \item Đổi biến (vd \code{nginx\_port}) $\rightarrow$ template \code{changed}
           $\rightarrow$ \textbf{handler restart nginx}.
     \item \code{curl http://192.168.56.20:<port>} kiểm chứng.
@@ -571,29 +585,23 @@ group_vars/web/
 
 \begin{frame}{Demo 3 — Ansible Vault}
   \begin{enumerate}\setlength{\itemsep}{0.4cm}
-    \item \code{ansible-vault create group\_vars/web/vault.yml} $\rightarrow$ \code{cat} thấy
+    \item \code{cat roles/nginx/vars/vault.yml} chỉ hiện ciphertext bắt đầu bằng
           \code{\$ANSIBLE\_VAULT;1.1;AES256}.
-    \item Chạy playbook \textbf{thiếu mật khẩu} $\rightarrow$ lỗi;
-          thêm \code{-{}-ask-vault-pass} $\rightarrow$ chạy được.
-    \item Trên managed node, file secret được tạo với quyền \code{0600};
-          output không lộ secret nhờ \code{no\_log}.
+    \item \code{ansible-vault view roles/nginx/vars/vault.yml} yêu cầu mật khẩu mới giải mã.
+    \item \code{site.yml} nạp file qua \code{vars\_files}; playbook chạy với
+          \code{-{}-ask-vault-pass} và task chỉ in \textbf{độ dài secret}.
   \end{enumerate}
 \end{frame}
 
 \begin{frame}{Demo 4 — Sự cố \& Idempotency}
   \begin{enumerate}\setlength{\itemsep}{0.3cm}
-    \item Task \code{shell: echo "data" >> /file.txt}, chạy 3 lần $\rightarrow$
-          \code{cat /file.txt} có \textbf{3 dòng \code{data}}, lần nào cũng \code{changed}.
-    \item Xoá file, sửa task thành
-          \code{lineinfile: path=/file.txt line=data create=true}.
-    \item Chạy 3 lần $\rightarrow$ lần 1 \code{changed=1}, lần 2 và 3
-          \textbf{\code{changed=0}}, file chỉ có 1 dòng.
+    \item Task \code{shell: echo "Data row entry" >> /tmp/idempotency\_demo.txt},
+          chạy 3 lần $\rightarrow$ file có \textbf{3 dòng}; task luôn báo \code{changed}.
+    \item Task \code{lineinfile} ghi một dòng chuẩn vào
+          \code{/tmp/idempotency\_demo\_fixed.txt}: lần đầu \code{changed}, các lần sau \code{ok}.
+    \item Khi chạy cả \code{site.yml}, PLAY RECAP vẫn có \code{changed} do task \code{shell};
+          so sánh \textbf{từng task} để thấy khác biệt về idempotency.
   \end{enumerate}
-  \vspace{0.3cm}
-  \begin{fitnote}
-    \textbf{Lưu ý:} phải xoá file trước bước 2, nếu không \code{lineinfile} thấy dòng đã có
-    và báo \code{ok} ngay từ lần đầu. Ghi vào \code{/} cần \code{become: true}.
-  \end{fitnote}
 \end{frame}
 
 % =====================================================================
