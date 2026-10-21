@@ -225,8 +225,10 @@ ansible webservers -i inventory -m ansible.builtin.ping
 # inventory
 [webservers]
 node1 ansible_host=54.255.185.187
-      ansible_user=ubuntu
-      ansible_ssh_private_key_file=~/.ssh/ansible_lab
+
+[webservers:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/ansible_lab
 \end{codeblock}
     \end{column}
   \end{columns}
@@ -248,21 +250,24 @@ node1 ansible_host=54.255.185.187
         minimum height=0.8cm, minimum width=2.5cm, align=center},
       tk/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, font=\small,
         minimum height=0.65cm, minimum width=1.5cm},
-      md/.style={font=\small\ttfamily, text=fitCode, anchor=west},
+      md/.style={rounded corners=2pt, draw=fitBlue!55, fill=white,
+        font=\scriptsize\ttfamily, text=fitCode, minimum height=0.6cm,
+        minimum width=3.5cm, align=center},
       ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
     \node[nd] (inv) at (0,0) {Inventory};
-    \node[nd, right=1.2cm of inv] (pb) {Playbook};
-    \node[nd, right=1.2cm of pb, text width=3.2cm] (play)
+    \node[nd] (pb) at (2.8,0) {Playbook};
+    \node[nd, text width=3.2cm] (play) at (5.9,0)
       {Play\\[-2pt]{\scriptsize\mdseries nhóm máy + role cần chạy}};
     \draw[ar] (inv) -- (pb); \draw[ar] (pb) -- (play);
-    \foreach \m/\y [count=\i] in {apt/-1.35, template/-2.35, service/-3.35} {
-      \node[tk] (t\i) at (5.0,\y) {Task \i};
-      \node[md, right=0.7cm of t\i] (m\i) {ansible.builtin.\m};
+    \foreach \m/\y [count=\i] in {apt/-1.3, template/-2.25, service/-3.2} {
+      \node[tk] (t\i) at (4.8,\y) {Task \i};
+      \node[md] (m\i) at (7.7,\y) {ansible.builtin.\m};
       \draw[ar] (t\i) -- (m\i);
       \draw[thick, fitBlue] (play.south) |- (t\i.west);
     }
-    \node[nd, fill=fitGreen, right=2.2cm of m2] (h) {Handler};
-    \draw[ar, fitGreen] (m2) -- node[above, font=\scriptsize\itshape, text=fitGreen]{notify} (h);
+    \node[nd, fill=fitGreen] (h) at (10.8,-2.25) {Handler};
+    \draw[ar, fitGreen] (m2) -- (h);
+    \node[font=\scriptsize\itshape, text=fitGreen, above=0.08cm of h] {notify};
     % Role
     \begin{scope}[on background layer]
       \node[draw=fitBlue, dashed, rounded corners=5pt, fit=(t1)(m3)(h), inner sep=0.3cm] (role) {};
@@ -276,9 +281,12 @@ node1 ansible_host=54.255.185.187
   \begin{columns}[c]
     \begin{column}{0.42\textwidth}
 \begin{codeblock}{ini}
-# inventory.ini
-[web]
-managed ansible_host=192.168.56.20
+# inventory
+[webservers]
+node1 ansible_host=54.255.185.187
+
+[webservers:vars]
+ansible_user=ubuntu
 \end{codeblock}
     \end{column}
     \begin{column}{0.54\textwidth}
@@ -396,11 +404,12 @@ server {
       \end{fitnote}
     \end{column}
     \begin{column}{0.46\textwidth}
-\begin{codeblock}{yaml}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
 - name: Render nginx.conf
   ansible.builtin.template:
     src: nginx.conf.j2
-    dest: /etc/nginx/sites-available/default
+    dest: >-
+      /etc/nginx/sites-available/default
   notify: Restart Nginx
 
 # handlers/main.yml
@@ -560,7 +569,8 @@ group_vars/web/
     \item \code{ansible web -m ping} $\rightarrow$ chứng minh SSH key hoạt động.
     \item \code{ansible-playbook site.yml} $\rightarrow$ role \code{nginx}: cài gói,
           render template, \code{started + enabled}.
-    \item Chạy lại $\rightarrow$ \code{changed=0}, \textbf{handler không chạy}.
+    \item Chạy lại \textbf{riêng phần triển khai Nginx} (tạm bỏ task \code{shell} của Demo 4)
+          $\rightarrow$ \code{changed=0}, \textbf{handler không chạy}.
     \item Đổi biến (vd \code{nginx\_port}) $\rightarrow$ template \code{changed}
           $\rightarrow$ \textbf{handler restart nginx}.
     \item \code{curl http://192.168.56.20:<port>} kiểm chứng.
@@ -580,11 +590,11 @@ group_vars/web/
 \begin{frame}{Demo 4 — Sự cố \& Idempotency}
   \begin{enumerate}\setlength{\itemsep}{0.3cm}
     \item Task \code{shell: echo "Data row entry" >> /tmp/idempotency\_demo.txt},
-          chạy 3 lần $\rightarrow$ file có \textbf{3 dòng}, lần nào cũng \code{changed}.
-    \item Task đối chiếu dùng \code{lineinfile} với file
-          \code{/tmp/idempotency\_demo\_fixed.txt} và một dòng chuẩn cố định.
-    \item Chạy 3 lần $\rightarrow$ lần 1 \code{changed=1}, lần 2 và 3
-          \textbf{\code{changed=0}}, file chỉ có 1 dòng.
+          chạy 3 lần $\rightarrow$ file có \textbf{3 dòng}; task luôn báo \code{changed}.
+    \item Task \code{lineinfile} ghi một dòng chuẩn vào
+          \code{/tmp/idempotency\_demo\_fixed.txt}: lần đầu \code{changed}, các lần sau \code{ok}.
+    \item Khi chạy cả \code{site.yml}, PLAY RECAP vẫn có \code{changed} do task \code{shell};
+          so sánh \textbf{từng task} để thấy khác biệt về idempotency.
   \end{enumerate}
 \end{frame}
 
