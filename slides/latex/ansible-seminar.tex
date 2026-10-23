@@ -10,7 +10,7 @@
 
 % ----------------------- THÔNG TIN NHÓM (sửa tại đây) ----------------
 \newcommand{\fitgroup}{Nhóm 9}
-\newcommand{\fitids}{24120184 - 24120294 - 24120288 - 24120468} % TODO: bổ sung 1 MSSV còn thiếu
+\newcommand{\fitids}{24120184 - 24120294 - 24120288 - 24120468 - 24120276}
 \newcommand{\fitlecturer}{Lê Hà Minh}
 \newcommand{\fitmembers}{Lê Quốc Hưng, Nguyễn Đức Duy, Nguyễn Thành Dự, Âu Bảo Trân, Mai Thúc Hải Đăng}
 \title{ANSIBLE CONFIGURATION MANAGEMENT}
@@ -20,8 +20,7 @@
 \newcommand{\fitagendaitems}{%
   {Bài toán \& sự ra đời},{Kiến trúc Agentless},
   {Các thành phần cơ bản},{Idempotence},
-  {Module chuyên dụng vs Shell},{Ansible Vault},
-  {Demo},{Tổng kết \& Hỏi đáp}}
+  {Module chuyên dụng vs Shell},{Ansible Vault}}
 
 % Logo công cụ trong bảng: \toollogo[chiều cao tối đa]{tên file sau "logo-"}
 \newcommand{\toollogo}[2][0.5cm]{\raisebox{0pt}[\dimexpr\height+3pt\relax][3pt]{\includegraphics[width=2.3cm,height=#1,keepaspectratio]{images/logo-#2.png}}}
@@ -104,38 +103,18 @@
 % =====================================================================
 
 \begin{frame}{Agentless là gì?}
-  \begin{itemize}\small
+  \begin{itemize}\setlength{\itemsep}{0.4cm}
     \item \textbf{Agent} = chương trình chạy thường trực trên mỗi máy được quản lý, liên lạc với
           server trung tâm để nhận cấu hình (Puppet agent, Chef Infra Client, salt-minion).
     \item \textbf{Agentless} = không cài agent riêng của Ansible trên máy đích. Ansible chỉ cài trên
           \textbf{Control Node}, khi cần thì kết nối tới \textbf{Managed Node} qua kênh có sẵn
           (\textbf{SSH} với Linux, WinRM/SSH với Windows), làm xong thì rút ra.
   \end{itemize}
-  \vspace{0.1cm}
-  \centering
-  \begin{tikzpicture}[
-      srv/.style={rounded corners=3pt, fill=fitBlue, text=white, align=center,
-        font=\scriptsize\bfseries, minimum width=3.1cm, minimum height=0.8cm},
-      host/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
-        font=\scriptsize, minimum width=1.5cm, minimum height=0.75cm},
-      ar/.style={-{Stealth[length=2mm]}, thick},
-      lbl/.style={font=\tiny, fill=white, inner sep=1pt}]
-    % Agent
-    \node[font=\small\bfseries, text=fitBlue] at (0,0.9) {Mô hình Agent (Puppet, Chef)};
-    \node[srv] (cs) at (0,0) {Server trung tâm\\(catalog, CA/key)};
-    \node[host] (a1) at (-1,-1.9) {Máy 1\\\textbf{+agent}};
-    \node[host] (a2) at (1,-1.9) {Máy 2\\\textbf{+agent}};
-    \draw[ar, fitGray!60!black] (a1) -- node[lbl]{tự kéo định kỳ} (cs);
-    \draw[ar, fitGray!60!black] (a2) -- node[lbl]{tự kéo định kỳ} (cs);
-    % Agentless
-    \node[font=\small\bfseries, text=fitBlue] at (7,0.9) {Mô hình Agentless (Ansible)};
-    \node[srv] (cn) at (7,0) {Control Node\\(cài Ansible)};
-    \node[host] (b1) at (6,-1.9) {Máy 1\\sshd};
-    \node[host] (b2) at (8,-1.9) {Máy 2\\sshd};
-    \draw[ar, fitBlue] (cn) -- node[lbl]{SSH khi ra lệnh} (b1);
-    \draw[ar, fitBlue] (cn) -- node[lbl]{SSH khi ra lệnh} (b2);
-    \draw[fitGray, dashed] (3.5,1.1) -- (3.5,-2.4);
-  \end{tikzpicture}
+  \vspace{0.5cm}
+  \begin{fitnote}
+    Ansible \textbf{chủ động đẩy} (push) cấu hình khi được ra lệnh, thay vì mỗi máy
+    phải cài agent và tự kéo (pull) định kỳ.
+  \end{fitnote}
 \end{frame}
 
 \begin{frame}{Agent vs Agentless}
@@ -161,81 +140,6 @@
           $\rightarrow$ dùng để cài Python lần đầu.
     \item \code{become: true} = chạy bằng \code{sudo}; \textbf{không tự cấp quyền} sudo
           (\code{-K} để nhập mật khẩu sudo).
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Một task chạy như thế nào?}
-  \begin{columns}[c]
-    \begin{column}{0.56\textwidth}
-      \begin{enumerate}\setlength{\itemsep}{0.25cm}
-        \item Control node đọc inventory, playbook, biến $\rightarrow$ đóng gói module + tham số.
-        \item SSH vào managed node, tạo thư mục tạm, chuyển mã module sang.
-        \item Managed node chạy module bằng Python (dùng \code{become} nếu cần quyền root).
-        \item Module trả \textbf{JSON} $\rightarrow$ Ansible báo
-              \code{ok} / \code{changed} / \code{failed}.
-        \item Xoá file tạm; kết quả task (gói, file cấu hình) vẫn giữ.
-      \end{enumerate}
-    \end{column}
-    \begin{column}{0.42\textwidth}
-      \centering
-      \begin{tikzpicture}[
-          nd/.style={rounded corners=3pt, fill=fitBlue, text=white, font=\small\bfseries,
-            minimum width=2.4cm, minimum height=0.8cm, align=center},
-          ar/.style={-{Stealth[length=2mm]}, thick, fitBlue},
-          st/.style={circle, fill=fitBlue, text=white, font=\tiny\bfseries, inner sep=1pt,
-            minimum size=1.1em}]
-        \node[nd] (c) at (0,0) {Control\\Node};
-        \node[nd] (m) at (0,-3.4) {Managed\\Node};
-        \draw[ar] ([xshift=-0.5cm]c.south) -- node[left, font=\scriptsize, align=right]
-          (l2) {module\\qua SSH} ([xshift=-0.5cm]m.north);
-        \draw[ar] ([xshift=0.5cm]m.north) -- node[right, font=\scriptsize, align=left]
-          (l4) {JSON\\kết quả} ([xshift=0.5cm]c.south);
-        \node[st, above=0.05cm of l2] {2};
-        \node[st, above=0.05cm of l4] {4};
-        \node[st, left=0.15cm of c] {1};
-        \node[st, left=0.15cm of m] {3};
-        \node[st, right=0.15cm of m] {5};
-      \end{tikzpicture}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}[fragile]{Kết nối SSH key}
-  \centering
-  \begin{tikzpicture}[
-      nd/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
-        font=\scriptsize, minimum width=4.1cm, minimum height=0.85cm}]
-    \node[nd] (c) {\textbf{Control Node}\\ansible-core, private key};
-    \node[nd, right=2.6cm of c] (m) {\textbf{Managed Node} \code{<managed-ip>}\\ví dụ: 54.255.185.187};
-    \draw[-{Stealth[length=2.5mm]}, very thick, fitBlue] (c) -- node[above, font=\scriptsize]
-      {SSH (TCP 22)} (m);
-  \end{tikzpicture}
-  \par\vspace{0.15cm}
-  \begin{columns}[t]
-    \begin{column}{0.58\textwidth}
-\begin{codeblock}[minted options={fontsize=\tiny}]{bash}
-ssh-keygen -t ed25519 -f ~/.ssh/ansible_lab
-ssh-copy-id -i ~/.ssh/ansible_lab.pub ubuntu@54.255.185.187
-ansible webservers -i inventory -m ansible.builtin.ping
-# "pong" = SSH + Python OK (không phải ICMP)
-\end{codeblock}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-\begin{codeblock}[minted options={fontsize=\tiny}]{ini}
-# inventory
-[webservers]
-node1 ansible_host=54.255.185.187
-
-[webservers:vars]
-ansible_user=ubuntu
-ansible_ssh_private_key_file=~/.ssh/ansible_lab
-\end{codeblock}
-    \end{column}
-  \end{columns}
-  \raggedright
-  \begin{itemize}\small
-    \item Private key \textbf{không bao giờ rời control node}; public key nằm trong
-          \code{authorized\_keys} của máy đích.
   \end{itemize}
 \end{frame}
 
@@ -306,6 +210,45 @@ ansible_user=ubuntu
   \end{columns}
 \end{frame}
 
+\begin{frame}[fragile]{Kết nối SSH key}
+  \centering
+  \begin{tikzpicture}[
+      nd/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
+        font=\scriptsize, minimum width=4.1cm, minimum height=0.85cm}]
+    \node[nd] (c) {\textbf{Control Node}\\ansible-core, private key};
+    \node[nd, right=2.6cm of c] (m) {\textbf{Managed Node} \code{<managed-ip>}\\ví dụ: 54.255.185.187};
+    \draw[-{Stealth[length=2.5mm]}, very thick, fitBlue] (c) -- node[above, font=\scriptsize]
+      {SSH (TCP 22)} (m);
+  \end{tikzpicture}
+  \par\vspace{0.15cm}
+  \begin{columns}[t]
+    \begin{column}{0.58\textwidth}
+\begin{codeblock}[minted options={fontsize=\tiny}]{bash}
+ssh-keygen -t ed25519 -f ~/.ssh/ansible_lab
+ssh-copy-id -i ~/.ssh/ansible_lab.pub ubuntu@54.255.185.187
+ansible webservers -i inventory -m ansible.builtin.ping
+# "pong" = SSH + Python OK (không phải ICMP)
+\end{codeblock}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+\begin{codeblock}[minted options={fontsize=\tiny}]{ini}
+# inventory
+[webservers]
+node1 ansible_host=54.255.185.187
+
+[webservers:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/ansible_lab
+\end{codeblock}
+    \end{column}
+  \end{columns}
+  \raggedright
+  \begin{itemize}\small
+    \item Private key \textbf{không bao giờ rời control node}; public key nằm trong
+          \code{authorized\_keys} của máy đích.
+  \end{itemize}
+\end{frame}
+
 \begin{frame}[fragile]{Playbook \& Task}
   \begin{columns}[c]
     \begin{column}{0.4\textwidth}
@@ -334,6 +277,42 @@ ansible_user=ubuntu
               từ dòng lệnh, không cần file. \textbf{Playbook}: nhiều task, lưu Git,
               chạy lại được.
       \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Một task chạy như thế nào?}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \begin{enumerate}\setlength{\itemsep}{0.25cm}
+        \item Control node đọc inventory, playbook, biến $\rightarrow$ đóng gói module + tham số.
+        \item SSH vào managed node, tạo thư mục tạm, chuyển mã module sang.
+        \item Managed node chạy module bằng Python (dùng \code{become} nếu cần quyền root).
+        \item Module trả \textbf{JSON} $\rightarrow$ Ansible báo
+              \code{ok} / \code{changed} / \code{failed}.
+        \item Xoá file tạm; kết quả task (gói, file cấu hình) vẫn giữ.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[
+          nd/.style={rounded corners=3pt, fill=fitBlue, text=white, font=\small\bfseries,
+            minimum width=2.4cm, minimum height=0.8cm, align=center},
+          ar/.style={-{Stealth[length=2mm]}, thick, fitBlue},
+          st/.style={circle, fill=fitBlue, text=white, font=\tiny\bfseries, inner sep=1pt,
+            minimum size=1.1em}]
+        \node[nd] (c) at (0,0) {Control\\Node};
+        \node[nd] (m) at (0,-3.4) {Managed\\Node};
+        \draw[ar] ([xshift=-0.5cm]c.south) -- node[left, font=\scriptsize, align=right]
+          (l2) {module\\qua SSH} ([xshift=-0.5cm]m.north);
+        \draw[ar] ([xshift=0.5cm]m.north) -- node[right, font=\scriptsize, align=left]
+          (l4) {JSON\\kết quả} ([xshift=0.5cm]c.south);
+        \node[st, above=0.05cm of l2] {2};
+        \node[st, above=0.05cm of l4] {4};
+        \node[st, left=0.15cm of c] {1};
+        \node[st, left=0.15cm of m] {3};
+        \node[st, right=0.15cm of m] {5};
+      \end{tikzpicture}
     \end{column}
   \end{columns}
 \end{frame}
@@ -434,17 +413,30 @@ server {
 
 \begin{frame}{Idempotent là gì?}
   \begin{itemize}\setlength{\itemsep}{0.3cm}
-    \item Chạy \textbf{1 lần hay 100 lần} $\rightarrow$ máy luôn ở
+    \item \textbf{Idempotent} (tính luỹ đẳng): một thao tác áp dụng \textbf{nhiều lần}
+          cho \textbf{cùng kết quả} như áp dụng \textbf{một lần}.
+    \item Trong Ansible: chạy playbook \textbf{1 lần hay 100 lần} $\rightarrow$ máy luôn ở
           \textbf{cùng trạng thái mong muốn}, không tác dụng phụ.
-    \item Ví dụ: bấm \textbf{nút tầng 5} thang máy (idempotent) vs
-          \textbf{nút toggle} đèn (không).
+          Lần đầu sửa những gì còn lệch (\code{changed}), các lần sau chỉ báo \code{ok}.
+    \item Ví dụ đời thường: bấm \textbf{nút tầng 5} thang máy nhiều lần vẫn chỉ đi tầng 5;
+          còn \textbf{công tắc đèn} bấm 2 lần thì về lại trạng thái cũ $\rightarrow$ không idempotent.
   \end{itemize}
-  \vspace{0.5cm}
-  \begin{fittable}{Y Y}
-    \hd{Idempotent} & \hd{Không idempotent} \\
-    \code{mkdir -p /data} & \code{mkdir /data} \quad (lần 2 lỗi) \\
-    \code{echo X > file} & \code{echo X >> file} \quad (nhân bản dòng) \\
-  \end{fittable}
+  \vspace{0.3cm}
+  \centering
+  \begin{tikzpicture}[
+      run/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
+        font=\scriptsize, minimum width=2.6cm, minimum height=0.85cm},
+      ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
+    \node[run] (r1) {\textbf{Lần 1}\\\code{changed=3}};
+    \node[run, right=1cm of r1] (r2) {\textbf{Lần 2}\\\code{changed=0}};
+    \node[run, right=1cm of r2] (rn) {\textbf{Lần N}\\\code{changed=0}};
+    \draw[ar] (r1) -- (r2); \draw[ar] (r2) -- (rn);
+  \end{tikzpicture}
+  \par\vspace{0.3cm}
+  \begin{fitnote}
+    Vì sao là \textbf{cốt lõi}: chạy lại playbook luôn \textbf{an toàn} — sửa được máy bị lệch cấu hình,
+    chạy tiếp sau khi lỗi giữa chừng, không lo cài trùng hay ghi đè sai.
+  \end{fitnote}
 \end{frame}
 
 \begin{frame}{Khai báo vs Mệnh lệnh}
@@ -566,65 +558,113 @@ group_vars/web/
   \end{itemize}
 \end{frame}
 
-% =====================================================================
-\section{Demo}
-% =====================================================================
-
-\begin{frame}{Demo 1 + 2 — Role Nginx, Template \& Handler}
-  \begin{enumerate}\setlength{\itemsep}{0.3cm}
-    \item \code{ansible web -m ping} $\rightarrow$ chứng minh SSH key hoạt động.
-    \item \code{ansible-playbook site.yml} $\rightarrow$ role \code{nginx}: cài gói,
-          render template, \code{started + enabled}.
-    \item Chạy lại \textbf{riêng phần triển khai Nginx} (tạm bỏ task \code{shell} của Demo 4)
-          $\rightarrow$ \code{changed=0}, \textbf{handler không chạy}.
-    \item Đổi biến (vd \code{nginx\_port}) $\rightarrow$ template \code{changed}
-          $\rightarrow$ \textbf{handler restart nginx}.
-    \item \code{curl http://192.168.56.20:<port>} kiểm chứng.
-  \end{enumerate}
+\begin{frame}{Hạn chế của Ansible}
+  \begin{itemize}\setlength{\itemsep}{0.3cm}
+    \item \textbf{Chậm khi nhiều máy}: mỗi task phải SSH vào và đẩy module sang;
+          mặc định chỉ chạy song song \code{forks = 5} máy.
+    \item \textbf{Không tự sửa khi lệch cấu hình}: không có agent nên ai sửa tay trên máy
+          thì Ansible không biết $\rightarrow$ phải chạy lại playbook (hoặc lên lịch chạy định kỳ).
+    \item \textbf{Playbook lớn khó đọc}: YAML + Jinja2 + \code{when}/\code{loop} dễ rối,
+          debug khó hơn code thông thường.
+    \item \textbf{Không quản lý vòng đời hạ tầng}: không lưu state như Terraform
+          $\rightarrow$ không hợp để tạo/xoá VM hàng loạt.
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{Demo 3 — Ansible Vault}
-  \begin{enumerate}\setlength{\itemsep}{0.4cm}
-    \item \code{cat roles/nginx/vars/vault.yml} chỉ hiện ciphertext bắt đầu bằng
-          \code{\$ANSIBLE\_VAULT;1.1;AES256}.
-    \item \code{ansible-vault view roles/nginx/vars/vault.yml} yêu cầu mật khẩu mới giải mã.
-    \item \code{site.yml} nạp file qua \code{vars\_files}; playbook chạy với
-          \code{-{}-ask-vault-pass} và task chỉ in \textbf{độ dài secret}.
-  \end{enumerate}
+\begin{frame}[fragile]{Ví dụ 1: Terraform dựng máy, Ansible cấu hình}
+  \centering
+  \begin{tikzpicture}[
+      st/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
+        font=\scriptsize, minimum width=2.4cm, minimum height=0.85cm},
+      ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
+    \node[st] (a) {\code{terraform apply}};
+    \node[st, right=0.45cm of a] (b) {3 máy EC2\\+ IP public};
+    \node[st, right=0.45cm of b] (c) {File \code{inventory}\\(Terraform tự sinh)};
+    \node[st, right=0.45cm of c] (d) {\code{ansible-playbook}};
+    \node[st, right=0.45cm of d, fill=fitBlue, text=white] (e) {\textbf{3 web Nginx}\\\textbf{chạy}};
+    \draw[ar] (a) -- (b); \draw[ar] (b) -- (c); \draw[ar] (c) -- (d); \draw[ar] (d) -- (e);
+  \end{tikzpicture}
+  \par\vspace{0.2cm}
+  \begin{columns}[t]
+    \begin{column}{0.6\textwidth}
+\begin{codeblock}[minted options={fontsize=\tiny}]{text}
+# main.tf
+resource "aws_instance" "web" {
+  count         = 3
+  ami           = "ami-xxxx"      # Ubuntu
+  instance_type = "t3.micro"
+}
+resource "local_file" "inventory" {
+  filename = "inventory"
+  content  = join("\n", concat(["[webservers]"],
+               aws_instance.web[*].public_ip))
+}
+\end{codeblock}
+\begin{codeblock}[minted options={fontsize=\tiny}]{bash}
+terraform apply -auto-approve
+ansible-playbook -i inventory site.yml
+\end{codeblock}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \raggedright
+      \begin{itemize}\small\setlength{\itemsep}{0.25cm}
+        \item Terraform lo \textbf{``có máy''}: tạo VM, mạng, security group; nhớ state để
+              sửa/xoá.
+        \item Ansible lo \textbf{``máy chạy đúng''}: cài gói, render config, bật service.
+        \item Không ai ghi IP bằng tay; cần 10 máy thì sửa \code{count = 10}.
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
-\begin{frame}{Demo 4 — Sự cố \& Idempotency}
-  \begin{enumerate}\setlength{\itemsep}{0.3cm}
-    \item Task \code{shell: echo "Data row entry" >> /tmp/idempotency\_demo.txt},
-          chạy 3 lần $\rightarrow$ file có \textbf{3 dòng}; task luôn báo \code{changed}.
-    \item Task \code{lineinfile} ghi một dòng chuẩn vào
-          \code{/tmp/idempotency\_demo\_fixed.txt}: lần đầu \code{changed}, các lần sau \code{ok}.
-    \item Khi chạy cả \code{site.yml}, PLAY RECAP vẫn có \code{changed} do task \code{shell};
-          so sánh \textbf{từng task} để thấy khác biệt về idempotency.
-  \end{enumerate}
-\end{frame}
-
-% =====================================================================
-\section{Tổng kết \& Hỏi đáp}
-% =====================================================================
-
-\begin{frame}{Tổng kết \& Hỏi đáp}
-  \begin{fitnote}
-    \textbf{Agentless} qua SSH · \textbf{khai báo} trạng thái · \textbf{idempotent} ·
-    ưu tiên \textbf{module chuyên dụng}.
-  \end{fitnote}
-  \vspace{0.2cm}
-  \textbf{Câu hỏi hay gặp:}
-  \begin{enumerate}\small\setlength{\itemsep}{0.15cm}
-    \item \textbf{Ansible khác shell script?} $\rightarrow$ Khai báo trạng thái, idempotent,
-          chạy nhiều máy, không agent.
-    \item \textbf{\code{command} khác \code{shell}?} $\rightarrow$ \code{shell} qua
-          \code{/bin/sh}; \code{command} an toàn hơn.
-    \item \textbf{Handler chạy khi nào?} $\rightarrow$ Cuối play, khi task notify báo
-          \code{changed}, mỗi host 1 lần.
-    \item \textbf{\code{defaults} hay \code{vars}?} $\rightarrow$ Cho người dùng chỉnh
-          $\rightarrow$ \code{defaults}; cố định $\rightarrow$ \code{vars}.
-  \end{enumerate}
+\begin{frame}[fragile]{Ví dụ 2: CI/CD — push code là chạy playbook}
+  \centering
+  \begin{tikzpicture}[
+      st/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
+        font=\scriptsize, minimum width=2.4cm, minimum height=0.85cm},
+      ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
+    \node[st] (a) {\code{git push main}};
+    \node[st, right=0.45cm of a] (b) {GitHub Actions\\khởi động runner};
+    \node[st, right=0.45cm of b] (c) {\code{ansible-lint}\\kiểm tra};
+    \node[st, right=0.45cm of c] (d) {\code{ansible-playbook}};
+    \node[st, right=0.45cm of d, fill=fitBlue, text=white] (e) {\textbf{Server}\\\textbf{được cập nhật}};
+    \draw[ar] (a) -- (b); \draw[ar] (b) -- (c); \draw[ar] (c) -- (d); \draw[ar] (d) -- (e);
+  \end{tikzpicture}
+  \par\vspace{0.2cm}
+  \begin{columns}[t]
+    \begin{column}{0.6\textwidth}
+\begin{codeblock}[minted options={fontsize=\tiny}]{yaml}
+# .github/workflows/deploy.yml
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install ansible ansible-lint
+      - run: ansible-lint site.yml
+      - run: |
+          echo "${{ secrets.SSH_KEY }}" > key && chmod 600 key
+          echo "${{ secrets.VAULT_PASS }}" > .vault_pass
+          ansible-playbook -i inventory site.yml \
+            --private-key key --vault-password-file .vault_pass
+\end{codeblock}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \raggedright
+      \begin{itemize}\small\setlength{\itemsep}{0.25cm}
+        \item Private key và mật khẩu Vault cất trong \textbf{GitHub Secrets},
+              không nằm trong repo.
+        \item \code{ansible-lint} lỗi $\rightarrow$ pipeline dừng, không đụng tới server.
+        \item Nhờ \textbf{idempotent}: push 10 lần thì chỉ phần thay đổi mới báo
+              \code{changed}.
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Mindmap kiến thức Ansible}

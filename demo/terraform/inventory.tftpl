@@ -1,0 +1,10 @@
+# File nay do Terraform sinh ra, dung sua tay
+[webservers]
+%{ for i, ip in ips ~}
+node${i + 1} ansible_host=${ip}
+%{ endfor ~}
+
+[webservers:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=${private_key_path}
+ansible_ssh_common_args='-o StrictHostKeyChecking=accept-new'
