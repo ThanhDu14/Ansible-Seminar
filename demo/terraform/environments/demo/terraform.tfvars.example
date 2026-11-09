@@ -1,0 +1,7 @@
+# cp terraform.tfvars.example terraform.tfvars, rồi sửa IP của bạn
+admin_cidrs    = ["1.2.3.4/32"]
+instance_count = 3
+
+# Key Pair có sẵn trên AWS + file .pem tương ứng trên Control Node
+# key_name             = "ansible-controller"
+# ssh_private_key_path = "~/Downloads/ansible-controller.pem"

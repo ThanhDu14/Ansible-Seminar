@@ -46,10 +46,39 @@
     state: started
     enabled: yes
 
-# 5. Vault Debug Task
-- name: In ra thong bao kiem tra bien tu Vault
-  ansible.builtin.debug:
-    msg: "Da doc thanh cong Secret Key dai {{ api_secret_key | length }} ky tu tu Ansible Vault!"
+# 5. Vault: mat khau admin (giai ma tu vault.yml) -> file htpasswd tren server
+#    Server chi luu HASH, no_log de mat khau khong lot ra output/log
+- name: Tao file htpasswd cho trang /admin tu mat khau trong Ansible Vault
+  ansible.builtin.copy:
+    content: "{{ admin_user }}:{{ vault_admin_password | password_hash('sha512', 'ansibleseminar') }}\n"
+    dest: /etc/nginx/.htpasswd
+    owner: root
+    group: www-data
+    mode: '0640'
+  no_log: true
+
+- name: Tao thu muc /admin
+  ansible.builtin.file:
+    path: "{{ document_root }}/admin"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Tao trang /admin (duoc bao ve bang Basic Auth)
+  ansible.builtin.copy:
+    content: |
+      <html>
+      <head><title>Admin Area</title></head>
+      <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+        <h1 style="color: #c0392b;">🔐 Admin Area</h1>
+        <p>Mat khau duoc lay tu Ansible Vault - khong nam dang plaintext trong Git.</p>
+      </body>
+      </html>
+    dest: "{{ document_root }}/admin/index.html"
+    owner: www-data
+    group: www-data
+    mode: '0644'
 
 - name: "[NON-IDEMPOTENT] Ghi append du lieu vao file bang shell"
   ansible.builtin.shell: echo "Data row entry" >> /tmp/idempotency_demo.txt

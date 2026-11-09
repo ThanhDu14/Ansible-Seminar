@@ -1,0 +1,6 @@
+# Inventory do Terraform sinh (terraform/environments/demo/inventory.tf)
+inventory-terraform
+
+# Mật khẩu vault
+*.vault_pass
+.vault_pass

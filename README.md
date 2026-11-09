@@ -82,22 +82,23 @@ Nginx (*Engine-X*) uses an event-driven, non-blocking master-worker process arch
 This repository follows Ansible's official role directory structure:
 
 ```text
-ansible_lab/
-├── inventory                    # Managed node IP definitions and connection parameters
-├── site.yml                     # Root Playbook binding target hosts to the Nginx role
-├── README.md                    # Detailed documentation and architectural breakdown
-└── roles/
-    └── nginx/                   # Modular Nginx Role
-        ├── defaults/
-        │   └── main.yml         # Default variables (http_port: 80, server_name)
-        ├── handlers/
-        │   └── main.yml         # Conditional handler to restart Nginx on change
-        ├── tasks/
-        │   └── main.yml         # Sequential workflow (Install, Template, Service, Idempotency)
-        ├── templates/
-        │   └── nginx.conf.j2    # Dynamic Jinja2 configuration template
-        └── vars/
-            └── vault.yml        # AES-256 encrypted secrets via Ansible Vault
+demo/
+├── ansible/
+│   ├── inventory                # Managed node IP definitions and connection parameters
+│   ├── site.yml                 # Root Playbook binding target hosts to the Nginx role
+│   └── roles/
+│       └── nginx/               # Modular Nginx Role
+│           ├── defaults/
+│           │   └── main.yml         # Default variables (http_port: 80, server_name)
+│           ├── handlers/
+│           │   └── main.yml         # Conditional handler to restart Nginx on change
+│           ├── tasks/
+│           │   └── main.yml         # Sequential workflow (Install, Template, Service, Idempotency)
+│           ├── templates/
+│           │   └── nginx.conf.j2    # Dynamic Jinja2 configuration template
+│           └── vars/
+│               └── vault.yml        # AES-256 encrypted secrets via Ansible Vault
+└── terraform/                   # Provision EC2 + generate ansible/inventory-terraform
 ```
 
 ---
@@ -126,6 +127,7 @@ ansible_lab/
 
 ### Run Playbook
 ```bash
+cd demo/ansible
 ansible-playbook -i inventory site.yml --ask-vault-pass
 ```
 
