@@ -5,6 +5,11 @@ output "web_public_ips" {
   value       = { for name, vm in module.web : name => vm.public_ip }
 }
 
+output "web_instance_ids" {
+  description = "Instance ID of each web node (vào máy: aws ssm start-session --target <id>)"
+  value       = { for name, vm in module.web : name => vm.instance_id }
+}
+
 output "web_urls" {
   description = "URLs to open after running the Ansible playbook"
   value       = [for vm in module.web : "http://${vm.public_ip}"]

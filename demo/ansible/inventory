@@ -1,3 +1,0 @@
-[webservers]
-node1 ansible_host=54.255.185.187 ansible_user=ubuntu
-

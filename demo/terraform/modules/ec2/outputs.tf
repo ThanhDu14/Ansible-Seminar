@@ -1,8 +1,11 @@
 # Outputs for ec2 module
 
 output "instance_id" {
-  description = "EC2 Instance ID"
+  description = "EC2 Instance ID (SSM target, dùng làm ansible_host)"
   value       = aws_instance.this.id
+
+  # Chỉ trả ID khi cloud-init đã xong → inventory sinh ra là dùng được ngay
+  depends_on = [terraform_data.wait_cloud_init]
 }
 
 output "private_ip" {
@@ -13,7 +16,4 @@ output "private_ip" {
 output "public_ip" {
   description = "Public IP address of the instance (empty if associate_public_ip = false)"
   value       = aws_instance.this.public_ip
-
-  # Chỉ trả IP khi cloud-init đã xong → inventory sinh ra là dùng được ngay
-  depends_on = [terraform_data.wait_cloud_init]
 }

@@ -23,16 +23,16 @@ data "aws_ami" "ubuntu" {
 
 # EC2 instance
 resource "aws_instance" "this" {
-  # checkov:skip=CKV_AWS_88: "Demo has no Bastion; Ansible Control Node SSHes straight to the public IP (SSH restricted to admin_cidrs)"
+  # checkov:skip=CKV_AWS_88: "Default VPC has no NAT; public IP is needed for HTTP demo and for SSM Agent to reach AWS endpoints (no port 22 open)"
   # checkov:skip=CKV_AWS_135: "EBS optimization enabled by default on t3 family"
   # checkov:skip=CKV_AWS_126: "Detailed monitoring (1-min) costs extra; not needed for a short-lived seminar demo"
   # checkov:skip=CKV_AWS_189: "Root volume encrypted with AWS-managed key; KMS CMK incurs unnecessary cost for demo"
-  # checkov:skip=CKV2_AWS_41: "Web nodes do not call AWS APIs; no IAM role needed"
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_id
   key_name                    = var.key_name
   vpc_security_group_ids      = var.security_group_ids
+  iam_instance_profile        = var.iam_instance_profile # SSM Agent (có sẵn trên AMI Ubuntu) dùng role này
   associate_public_ip_address = var.associate_public_ip
 
   root_block_device {
@@ -69,20 +69,25 @@ resource "aws_instance" "this" {
   }
 }
 
-# Đợi SSH lên và cloud-init chạy xong (tránh lỗi apt bị khoá khi Ansible cài Nginx)
+# Đợi SSM Agent online rồi đợi cloud-init chạy xong (tránh lỗi apt bị khoá khi Ansible cài Nginx).
+# Không SSH thẳng vào public IP: SSH đi qua tunnel SSM (AWS-StartSSHSession), port 22 vẫn đóng.
+# Cần trên máy chạy Terraform: AWS CLI v2 + session-manager-plugin.
 resource "terraform_data" "wait_cloud_init" {
   count = var.wait_for_cloud_init ? 1 : 0
 
   triggers_replace = [aws_instance.this.id]
 
-  provisioner "remote-exec" {
-    inline = ["cloud-init status --wait > /dev/null"]
-
-    connection {
-      type        = "ssh"
-      host        = aws_instance.this.public_ip
-      user        = "ubuntu"
-      private_key = file(pathexpand(var.ssh_private_key_path))
-    }
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      SSH="ssh -i ${pathexpand(var.ssh_private_key_path)} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+        -o ProxyCommand='aws ssm start-session --region ${var.aws_region} --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p'"
+      for i in $(seq 1 30); do
+        if eval "$SSH ubuntu@${aws_instance.this.id} true" 2>/dev/null; then break; fi
+        echo "Đợi SSM Agent của ${aws_instance.this.id} online... ($i/30)"; sleep 10
+      done
+      eval "$SSH ubuntu@${aws_instance.this.id} 'cloud-init status --wait > /dev/null'"
+    EOT
   }
 }

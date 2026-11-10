@@ -14,10 +14,17 @@ module "security_group" {
   project_name = var.project_name
   environment  = var.environment
   vpc_id       = data.aws_vpc.default.id
-  admin_cidrs  = var.admin_cidrs
 }
 
-# 2. EC2 Module — web-1..web-N (public IP, đợi cloud-init xong cho Ansible)
+# 2. SSM Role Module — IAM role + instance profile cho Session Manager (thay cho mở port 22)
+module "ssm_role" {
+  source = "../../modules/ssm-role"
+
+  project_name = var.project_name
+  environment  = var.environment
+}
+
+# 3. EC2 Module — web-1..web-N (Ansible vào qua SSM, đợi cloud-init xong)
 module "web" {
   source   = "../../modules/ec2"
   for_each = toset([for i in range(var.instance_count) : "web-${i + 1}"])
@@ -28,5 +35,7 @@ module "web" {
   instance_type        = var.instance_type
   key_name             = var.key_name
   security_group_ids   = [module.security_group.sg_web_id]
+  iam_instance_profile = module.ssm_role.instance_profile_name
+  aws_region           = var.aws_region
   ssh_private_key_path = var.ssh_private_key_path
 }

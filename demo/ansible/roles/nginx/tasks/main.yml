@@ -21,6 +21,9 @@
     mode: '0644'
   notify: Restart Nginx
 
+
+
+
 # Tao trang index.html chao muong
 - name: Tao trang index.html mau cho Web Server
   ansible.builtin.copy:
@@ -45,6 +48,15 @@
     name: nginx
     state: started
     enabled: yes
+- name: Ghi server_name vao /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+\S+\s+# managed by ansible nginx role$'
+    line: "127.0.0.1 {{ server_name }} # managed by ansible nginx role"
+    owner: root
+    group: root
+    mode: '0644'
+
 
 # 5. Vault: mat khau admin (giai ma tu vault.yml) -> file htpasswd tren server
 #    Server chi luu HASH, no_log de mat khau khong lot ra output/log
@@ -80,14 +92,3 @@
     group: www-data
     mode: '0644'
 
-- name: "[NON-IDEMPOTENT] Ghi append du lieu vao file bang shell"
-  ansible.builtin.shell: echo "Data row entry" >> /tmp/idempotency_demo.txt
-
-
-# 6. Idempotency Demo Task
-- name: "[IDEMPOTENT] Ghi du lieu chuan Ansible Idempotency"
-  ansible.builtin.lineinfile:
-    path: /tmp/idempotency_demo_fixed.txt
-    line: "Log Entry - Standardized Data Row"
-    create: yes
-    state: present

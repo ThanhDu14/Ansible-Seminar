@@ -1,0 +1,21 @@
+---
+# Demo Idempotency: so sanh shell (append) voi module lineinfile
+# Chay playbook nay 2-3 lan roi xem noi dung 2 file tren may dich:
+#   - shell:       lan nao cung "changed", file dai them 1 dong moi lan
+#   - lineinfile:  chi lan dau "changed", cac lan sau "ok", file luon 1 dong
+# Khong can vault / sudo: chi ghi vao /tmp cua user ubuntu.
+
+- name: Demo Idempotency - shell vs lineinfile
+  hosts: webservers
+  gather_facts: false
+
+  tasks:
+    - name: "[NON-IDEMPOTENT] Ghi append du lieu vao file bang shell"
+      ansible.builtin.shell: echo "Data row entry" >> /tmp/idempotency_demo.txt
+
+    - name: "[IDEMPOTENT] Ghi du lieu chuan Ansible Idempotency"
+      ansible.builtin.lineinfile:
+        path: /tmp/idempotency_demo_fixed.txt
+        line: "Log Entry - Standardized Data Row"
+        create: true
+        state: present

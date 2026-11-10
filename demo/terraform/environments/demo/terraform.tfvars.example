@@ -1,5 +1,4 @@
-# cp terraform.tfvars.example terraform.tfvars, rồi sửa IP của bạn
-admin_cidrs    = ["1.2.3.4/32"]
+# cp terraform.tfvars.example terraform.tfvars (không cần IP: Ansible vào qua SSM)
 instance_count = 3
 
 # Key Pair có sẵn trên AWS + file .pem tương ứng trên Control Node

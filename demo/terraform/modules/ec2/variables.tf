@@ -29,7 +29,7 @@ variable "subnet_id" {
 
 variable "key_name" {
   type        = string
-  description = "EC2 Key Pair name for SSH access"
+  description = "EC2 Key Pair name; SSH goes through the SSM tunnel, not port 22"
 }
 
 variable "security_group_ids" {
@@ -37,15 +37,25 @@ variable "security_group_ids" {
   description = "List of Security Group IDs to attach to the instance"
 }
 
+variable "iam_instance_profile" {
+  type        = string
+  description = "IAM instance profile name (with AmazonSSMManagedInstanceCore) so the instance can be reached via SSM"
+}
+
+variable "aws_region" {
+  type        = string
+  description = "AWS region, used by aws ssm start-session when waiting for cloud-init"
+}
+
 variable "associate_public_ip" {
   type        = bool
-  description = "Whether to assign a public IP (needed when Ansible SSHes in directly, without a Bastion)"
+  description = "Whether to assign a public IP (default VPC has no NAT: needed for HTTP demo and SSM Agent outbound)"
   default     = true
 }
 
 variable "wait_for_cloud_init" {
   type        = bool
-  description = "Wait over SSH until cloud-init finishes, so Ansible can run apt right after apply"
+  description = "Wait (SSH over SSM) until cloud-init finishes, so Ansible can run apt right after apply"
   default     = true
 }
 

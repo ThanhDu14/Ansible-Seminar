@@ -132,7 +132,7 @@ Mở các URL trong `terraform output web_urls` trên trình duyệt (thử `/ad
 **Tab 2**:
 
 ```bash
-# Chạy lại y hệt: toàn "ok", chỉ task [NON-IDEMPOTENT] shell còn "changed",
+# Chạy lại y hệt: toàn "ok", PLAY RECAP changed=0,
 # handler KHÔNG chạy vì config không đổi
 ansible-playbook -i inventory-terraform site.yml --ask-vault-pass
 ```
@@ -146,7 +146,7 @@ cat roles/nginx/defaults/main.yml
 # Xem trước thay đổi, chưa áp dụng (Slide 20)
 ansible-playbook -i inventory-terraform site.yml --ask-vault-pass --check --diff
 
-# Chạy thật: chỉ task template "changed", handler restart đúng 1 lần mỗi máy
+# Chạy thật: chỉ task template + /etc/hosts "changed", handler restart đúng 1 lần mỗi máy
 ansible-playbook -i inventory-terraform site.yml --ask-vault-pass
 ```
 
@@ -154,13 +154,24 @@ ansible-playbook -i inventory-terraform site.yml --ask-vault-pass
 
 ```bash
 ansible webservers -i inventory-terraform -a "grep server_name /etc/nginx/sites-available/default"
+
+# /etc/hosts: dòng cũ được SỬA thành tên mới (không thêm dòng trùng) → curl theo tên chạy được
+ansible webservers -i inventory-terraform -a "grep 'managed by ansible' /etc/hosts"
+ansible webservers -i inventory-terraform -a "curl -s -o /dev/null -w '%{http_code}' http://seminar.ansible.lab"
 ```
 
 ---
 
 ## Demo 4 — Shell vs `lineinfile` (~1,5 phút)
 
-Đến đây playbook đã chạy khoảng 3–4 lần, không cần chạy thêm.
+Playbook riêng `idempotency-demo.yml` (không cần vault): 1 task `shell` append, 1 task `lineinfile`.
+
+**Tab 2** — chạy 3 lần liên tiếp:
+
+```bash
+# Lần nào task [NON-IDEMPOTENT] cũng "changed"; task [IDEMPOTENT] chỉ "changed" ở lần 1
+for i in 1 2 3; do ansible-playbook -i inventory-terraform idempotency-demo.yml; done
+```
 
 **Tab 3**:
 

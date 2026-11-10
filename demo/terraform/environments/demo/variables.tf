@@ -35,21 +35,6 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
-variable "admin_cidrs" {
-  type        = list(string)
-  description = "CIDRs allowed to SSH into web nodes — the Ansible Control Node (xem IP: curl -s ifconfig.me)"
-
-  validation {
-    condition     = length(var.admin_cidrs) >= 1
-    error_message = "admin_cidrs phải có ít nhất 1 CIDR."
-  }
-
-  validation {
-    condition     = alltrue([for c in var.admin_cidrs : can(cidrhost(c, 0)) && c != "0.0.0.0/0"])
-    error_message = "Mỗi phần tử admin_cidrs phải là CIDR hợp lệ (vd 1.2.3.4/32) và không được là 0.0.0.0/0."
-  }
-}
-
 variable "key_name" {
   type        = string
   description = "Tên EC2 Key Pair đã có sẵn trên AWS (cùng region), tải .pem khi tạo trên Console"
@@ -58,6 +43,6 @@ variable "key_name" {
 
 variable "ssh_private_key_path" {
   type        = string
-  description = "Đường dẫn file .pem của key_name; dùng để đợi cloud-init và ghi vào Ansible inventory"
+  description = "Đường dẫn file .pem của key_name; SSH đi qua tunnel SSM (dùng để đợi cloud-init và ghi vào Ansible inventory)"
   default     = "~/Downloads/ansible-controller.pem"
 }

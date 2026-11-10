@@ -1,6 +1,9 @@
 # inventory.tf — sinh ra demo/ansible/inventory-terraform sau khi terraform apply
-# File này bị gitignore; Ansible đọc nó để biết IP và SSH config của từng máy.
+# File này bị gitignore; Ansible đọc nó để biết máy nào và cách SSH vào.
 # path.module = demo/terraform/environments/demo → lùi 3 cấp tới demo/.
+#
+# ansible_host = instance ID; SSH đi qua tunnel SSM (ProxyCommand AWS-StartSSHSession)
+# → không cần public IP cho SSH, không mở port 22, không cần admin_cidrs.
 
 resource "local_file" "ansible_inventory" {
   filename        = "${path.module}/../../../ansible/inventory-terraform"
@@ -11,11 +14,11 @@ resource "local_file" "ansible_inventory" {
     # DO NOT EDIT MANUALLY — chạy terraform apply để cập nhật
 
     [webservers]
-    ${join("\n", [for name, vm in module.web : "${name} ansible_host=${vm.public_ip}"])}
+    ${join("\n", [for name, vm in module.web : "${name} ansible_host=${vm.instance_id}"])}
 
     [webservers:vars]
     ansible_user=ubuntu
     ansible_ssh_private_key_file=${var.ssh_private_key_path}
-    ansible_ssh_common_args='-o StrictHostKeyChecking=accept-new'
+    ansible_ssh_common_args='-o StrictHostKeyChecking=accept-new -o ProxyCommand="aws ssm start-session --region ${var.aws_region} --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"'
   EOT
 }
