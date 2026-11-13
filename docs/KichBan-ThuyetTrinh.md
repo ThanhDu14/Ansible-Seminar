@@ -10,7 +10,7 @@
 ## Slide 1. Tiêu đề — *ANSIBLE CONFIGURATION MANAGEMENT* (~30s)
 
 **Nói:**
-"Kính chào thầy và các bạn. Nhóm 9 xin trình bày đề tài số 9: Ansible Configuration Management. Hôm nay nhóm sẽ trả lời ba câu hỏi: vì sao cần một công cụ quản lý cấu hình, Ansible hoạt động như thế nào, và làm sao dùng nó đúng cách — tức là viết playbook chạy lại bao nhiêu lần cũng an toàn."
+"Kính chào thầy và các bạn. Nhóm 9 xin trình bày đề tài số 9: Ansible Configuration Management. Hôm nay nhóm sẽ trả lời ba câu hỏi: Vấn đề thực tế. vì sao cần một công cụ quản lý cấu hình, Ansible hoạt động như thế nào."
 
 **Chuyển:** "Nội dung gồm sáu phần, bắt đầu từ một bài toán rất thực tế."
 
@@ -115,7 +115,7 @@ Tất cả tasks, handlers, templates, biến được đóng gói vào một th
 
 **Nói:**
 "Inventory là danh sách máy Ansible quản lý, chia thành nhóm. Ở đây nhóm `webservers` có máy `node1` với IP public, và biến cho cả nhóm là `ansible_user=ubuntu`.
-Luôn có nhóm mặc định `all`. Biến nên tách ra thư mục `group_vars/` và `host_vars/`. Quy tắc ưu tiên: **cụ thể hơn thì thắng** — `host_vars` thắng `group_vars` của nhóm, nhóm thắng `all`."
+Luôn có nhóm mặc định `all`. Biến nên tách ra thư mục `group_vars/` và `host_vars/`. Nếu cùng một biến được khai báo ở nhiều nơi, **phạm vi hẹp ghi đè phạm vi rộng**: `host_vars` chỉ áp cho một máy nên ghi đè `group_vars` của nhóm, và nhóm lại ghi đè `all`. Ví dụ `all` đặt `http_port: 80`, riêng `web-2` trong `host_vars` đặt `8080` → chỉ `web-2` chạy cổng 8080, các máy khác vẫn 80."
 
 **Chuyển:** "Có danh sách máy rồi, Ansible vào máy bằng cách nào?"
 
@@ -131,11 +131,10 @@ Trong inventory chỉ cần thêm `ansible_ssh_private_key_file`. Private key kh
 ## Slide 13. Playbook & Task (~1 phút)
 
 **Nói:**
-"Playbook bên trái có một play: chạy trên `webservers`, `become: true` để có quyền root, và một task cài nginx.
+"**Playbook** là một file YAML chứa một hoặc nhiều **Play** — chú thích trong code đánh dấu đâu là Play, đâu là Task. Play bên trái chạy trên `webservers`, `become: true` để có quyền root, và có một task cài nginx.
 Một **Play** gồm `hosts`, `become`, `vars`, `tasks` chạy từ trên xuống, và `handlers`. Một **Task** gồm tên, module và tham số; hay đi kèm `when` (điều kiện), `loop` (lặp), `register` (lưu kết quả), `notify` (gọi handler).
 `ansible.builtin.apt` là tên đầy đủ — FQCN — gồm collection `ansible.builtin` và module `apt`.
-Chú ý dòng `state: present`: mình không ra lệnh 'cài nginx', mình **khai báo** 'nginx phải có'. Chưa có thì Ansible cài và báo `changed`; có rồi thì không làm gì và báo `ok`.
-Ngoài playbook còn có lệnh **ad-hoc** — chạy một module một lần từ dòng lệnh, như lệnh ping lúc nãy."
+Chú ý dòng `state: present`: mình không ra lệnh 'cài nginx', mình **khai báo** 'nginx phải có'. Chưa có thì Ansible cài và báo `changed`; có rồi thì không làm gì và báo `ok`."
 
 **Nhấn mạnh:** YAML thụt lề bằng **space**, không dùng tab.
 
@@ -158,17 +157,17 @@ Năm: xoá file tạm. Thứ còn lại trên máy chỉ là *kết quả* — g
 ## Slide 15. Role (~1 phút)
 
 **Nói:**
-"Role là cách đóng gói theo thư mục chuẩn. Role `nginx` của nhóm có: `defaults` chứa biến mặc định, `handlers` chứa handler restart, `tasks` chứa các bước triển khai, `templates` chứa file Jinja2, và `vars/vault.yml` chứa secret đã mã hoá.
-Role không tự chạy; `site.yml` gọi nó bằng `roles: [nginx]`.
-Thứ tự ưu tiên biến: `defaults` thấp nhất, rồi `group_vars`, `host_vars`, `vars` của role, và `-e` — extra vars trên dòng lệnh — **luôn thắng**. Vì vậy biến cho người dùng tuỳ chỉnh thì đặt ở `defaults`; biến cố định thì đặt ở `vars`."
+"Role là cách đóng gói theo thư mục chuẩn. Role `nginx` của nhóm có: `defaults` chứa biến mặc định, `handlers` chứa handler restart, `tasks` chứa các bước triển khai, và `templates` chứa file Jinja2. Secret **không** để trong role mà ở `group_vars/webservers/`, để role dùng lại được ở môi trường khác.
+Ansible **tự nạp** file `main.yml` trong từng thư mục, không cần `include` gì cả.
+Role không tự chạy; như `site.yml` bên dưới, playbook gọi nó bằng `roles:`."
 
 **Chuyển:** "Trong role có template — xem nó hoạt động thế nào."
 
 ## Slide 16. Template Jinja2 (~1 phút)
 
 **Nói:**
-"Template dùng cú pháp Jinja2: hai dấu ngoặc nhọn để in giá trị biến, `{% if %}` và `{% for %}` để điều khiển, `{# #}` để comment. Filter như `default(80)` cho giá trị mặc định, `join` để nối list.
-Ví dụ bên phải là config nginx: cổng, tên server, thư mục gốc đều là biến. Cùng một template, mỗi máy hoặc mỗi môi trường ra một file khác nhau.
+"Bên trái là file `nginx.conf.j2` trong role: cổng, tên server, thư mục gốc đều là biến trong hai dấu ngoặc nhọn. Bên phải là file sau khi render nằm trên máy đích — biến đã được thay bằng giá trị lấy từ `defaults/main.yml`: cổng 80, `demo.ansible.lab`, `/var/www/html`.
+Cú pháp Jinja2: `{{ }}` in giá trị biến, `{% if %}` và `{% for %}` để điều khiển, `{# #}` để comment. Cùng một template, mỗi máy hoặc mỗi môi trường ra một file khác nhau.
 Template được **render trên control node** rồi mới đẩy file sang máy đích.
 So với `copy`: `copy` chép nguyên văn, dùng cho file tĩnh; `template` render biến trước, dùng cho file thay đổi theo host."
 
@@ -181,7 +180,7 @@ So với `copy`: `copy` chép nguyên văn, dùng cho file tĩnh; `template` ren
 **Nói:**
 "Handler là task 'ngủ', chỉ chạy khi được gọi. Task render config có `notify: Restart Nginx`. Nếu task này báo `changed` — nghĩa là file config thật sự đổi — thì handler mới chạy. Config không đổi thì **không restart**, server không bị gián đoạn.
 Handler chạy ở **cuối play**, và **một lần mỗi host** dù được notify nhiều lần. Tên trong `notify` phải khớp đúng tên handler.
-Đề bài yêu cầu restart, nhưng thực tế khi chỉ đổi config thì nên dùng `state: reloaded`: nginx đọc lại config mà không ngắt kết nối đang có."
+Một cái bẫy nhóm gặp khi làm demo: nếu có task **lỗi** sau khi đã notify, handler của máy đó **bị bỏ qua**. Lần chạy sau config đã đúng nên task báo `ok`, không notify nữa — nginx không bao giờ được restart. Cách tránh: thêm `force_handlers: true` vào play để handler vẫn chạy dù có lỗi."
 
 **Chuyển:** "Handler chỉ chạy khi có thay đổi — đó là một biểu hiện của nguyên lý quan trọng nhất trong Ansible: idempotence."
 
@@ -204,10 +203,10 @@ Trong Ansible: chạy playbook 1 lần hay 100 lần, máy luôn ở cùng trạ
 
 **Chuyển:** "Ansible làm được điều này nhờ cách viết khác hẳn shell script."
 
-## Slide 19. Khai báo vs Mệnh lệnh (~1.5 phút)
+## Slide 19. Ansible làm idempotent thế nào? (~1.5 phút)
 
 **Nói:**
-"Shell script là **mệnh lệnh** — trả lời 'làm thế nào': chạy `apt-get install`, chép file, restart. Ansible là **khai báo** — trả lời 'kết quả cuối là gì': nginx phải có, file phải đúng nội dung, service phải chạy.
+"Bên trái là hai cách viết. Shell script là **mệnh lệnh** — trả lời 'làm thế nào': chạy `apt-get install`, chép file, restart — chạy lại là restart lại. Ansible là **khai báo** — trả lời 'kết quả cuối là gì': `state: present` nghĩa là nginx phải có, có rồi thì không làm gì.
 Bash *có thể* viết idempotent, nhưng mỗi bước phải tự viết kiểm tra: `dpkg -s nginx` để xem gói có chưa, `cmp` để so file, `systemctl is-active` để xem service, rồi tự dùng biến cờ để quyết định có restart không. Và chạy xong vẫn không biết bước nào đã thay đổi.
 Trong Ansible, logic 'kiểm tra → so sánh → chỉ sửa phần lệch' đã nằm sẵn trong module. Khớp thì báo `ok`, lệch thì sửa vừa đủ và báo `changed`.
 Kết quả được tổng hợp ở **PLAY RECAP** — bảng bên phải: `ok` là số task thành công, *bao gồm cả* các task `changed`; `changed` là số task đã thay đổi máy; `failed` là lỗi và dừng trên host đó; `unreachable` là không SSH được; `skipped` là task có `when` bằng false."
@@ -220,7 +219,7 @@ Kết quả được tổng hợp ở **PLAY RECAP** — bảng bên phải: `ok
 
 **Nói:**
 "`--check` là chế độ mô phỏng: Ansible dự đoán task nào sẽ `changed` nhưng không đổi gì trên máy thật. `--diff` hiện chính xác dòng nào sẽ bị thêm hoặc xoá trong file, giống `git diff`.
-Thường dùng chung: `ansible-playbook site.yml --check --diff` trước khi áp dụng lên production.
+Thường dùng chung: `ansible-playbook site.yml --check --diff` trước khi áp dụng lên production. Bên phải là output khi đổi `server_name` như ở phần demo: dòng `-` là giá trị cũ, dòng `+` là giá trị mới, task báo `changed` — nhưng file trên máy **vẫn chưa đổi**, phải bỏ `--check` thì mới áp dụng.
 Giới hạn: `shell` và `command` bị **skip** trong check mode, vì Ansible không biết lệnh sẽ làm gì nếu không chạy thật — trừ khi có `creates` hoặc `removes`."
 
 **Chuyển:** "Câu 'Ansible không biết lệnh shell làm gì' dẫn tới phần tiếp theo: module chuyên dụng so với shell."
@@ -240,15 +239,22 @@ Ngoài ra có `raw` — không cần Python, dùng để bootstrap — và `scri
 
 ## Slide 22. Vì sao module chuyên dụng tốt hơn? (~1 phút)
 
-**Nói:**
-"Với Ansible, `shell` và `command` là **hộp đen**: nó chỉ thấy mã trả về và stdout, không biết lệnh có thay đổi gì không, nên **luôn báo `changed`**.
-Module chuyên dụng thì **kiểm tra trước khi làm**: `copy` so checksum, giống thì `ok`; `lineinfile` thấy dòng đã có thì `ok`, chưa có mới thêm; `systemd_service` với `state: started` chỉ khởi động khi service đang dừng.
-Ví dụ so sánh — lần chạy thứ 2:
-- `shell: mkdir /data` → lỗi `File exists`; `file: state=directory` → `ok`.
-- `shell: echo ... >> sysctl.conf` → thêm dòng trùng; `lineinfile` → `ok`.
-- `shell: useradd deploy` → lỗi; `user: state=present` → `ok`.
-- `shell: apt-get install nginx` → luôn `changed`; `apt: state=present` → `ok`.
-Ngoài ra module còn hỗ trợ `--check`/`--diff`, trả dữ liệu có cấu trúc, an toàn hơn và dễ đọc hơn."
+**Nói (chỉ vào sơ đồ):**
+"Hàng trên là `shell` và `command`: với Ansible đây là **hộp đen**. Nó đưa lệnh vào, chạy, và chỉ nhận lại mã trả về với stdout. Nó không biết lệnh có thay đổi gì trên máy hay không, nên **lần nào cũng báo `changed`**.
+Hàng dưới là module chuyên dụng: ta khai báo **trạng thái mong muốn**, module **đọc hiện trạng máy** rồi so sánh. Khớp rồi thì báo `ok` và không làm gì; lệch thì chỉ sửa vừa đủ và báo `changed`. Ví dụ `copy` so checksum, `lineinfile` xem dòng đã có chưa, `systemd_service` chỉ start khi service đang dừng.
+Nhờ bước kiểm tra đó, module còn hỗ trợ `--check`/`--diff`, trả dữ liệu có cấu trúc, và an toàn hơn vì không đi qua shell."
+
+**Chuyển:** "Khác biệt này lộ rõ nhất khi ta chạy playbook lần thứ hai."
+
+## Slide 22b. Chạy lại lần 2: shell vs module (~1 phút)
+
+**Nói (đi từng dòng của bảng):**
+"Cùng một việc, chạy lần 2:
+- `shell: mkdir /data` → **lỗi** `File exists`; `file: state=directory` → `ok`.
+- `shell: echo ... >> sysctl.conf` → **thêm dòng trùng**; `lineinfile` → `ok`.
+- `shell: useradd deploy` → **lỗi** vì user đã có; `user: state=present` → `ok`.
+- `shell: apt-get install nginx` → **luôn `changed`**; `apt: state=present` → `ok`.
+Tóm lại: shell thì lần 2 hoặc lỗi, hoặc nhân đôi cấu hình, hoặc báo `changed` sai; module thì lần 2 toàn `ok`, chạy lại bao nhiêu lần cũng an toàn."
 
 **Chuyển:** "Nhưng không phải việc gì cũng có module. Khi buộc phải dùng shell thì sao?"
 
@@ -256,7 +262,7 @@ Ngoài ra module còn hỗ trợ `--check`/`--diff`, trả dữ liệu có cấu
 
 **Nói:**
 "Ta có thể 'dạy' Ansible biết khi nào lệnh đã làm rồi.
-Ví dụ 1: giải nén `tar -xzf app.tar.gz -C /opt/app` với `creates: /opt/app/README` — nếu file đó đã tồn tại, Ansible coi như đã giải nén và bỏ qua. Ngược lại, `removes` nghĩa là chỉ chạy khi file còn tồn tại.
+Ví dụ 1: giải nén `tar -xzf app.tgz -C /opt/app` với `creates: /opt/app/README` — nếu file đó đã tồn tại, Ansible coi như đã giải nén và bỏ qua. Ngược lại, `removes` nghĩa là chỉ chạy khi file còn tồn tại.
 Ví dụ 2: `command: uname -r` chỉ đọc phiên bản kernel, không thay đổi gì, nên đặt `changed_when: false` để nó luôn báo `ok`.
 Có thể viết điều kiện tinh hơn, ví dụ `changed_when: "'Created' in result.stdout"`, kết hợp `register` để lưu output."
 
@@ -280,9 +286,9 @@ Khi chạy: dùng `--ask-vault-pass` để gõ mật khẩu nếu chạy tay; d�
 ## Slide 25. Cách tổ chức (~45s)
 
 **Nói:**
-"Quy ước phổ biến: tách hai file trong `group_vars/web/`. `vars.yml` công khai, chỉ trỏ tới biến trong vault: `app_secret: \"{{ vault_app_secret }}\"`. `vault.yml` đã mã hoá, chứa giá trị thật.
+"Quy ước phổ biến: tách hai file trong `group_vars/webservers/` — đúng như demo của nhóm. `vars.yml` công khai, chỉ trỏ tới biến trong vault: `admin_password: \"{{ vault_admin_password }}\"`. `vault.yml` đã mã hoá, chứa giá trị thật.
 Tiền tố `vault_` giúp grep được tên biến mà không cần giải mã, nhìn là biết giá trị thật nằm trong vault.
-Task nào dùng secret thì thêm `no_log: true` để Ansible không in secret ra màn hình hay log. Trong demo, nhóm chỉ in **độ dài** của secret để chứng minh giải mã được mà không làm lộ nó."
+Task nào dùng secret thì thêm `no_log: true` để Ansible không in secret ra màn hình hay log. Trong demo, task tạo htpasswd hiện `censored` thay vì mật khẩu, và server chỉ lưu hash."
 
 **Chuyển:** "Trước khi kết thúc, nhóm muốn nói thẳng về những hạn chế của Ansible."
 
@@ -334,20 +340,33 @@ Và lại nhờ idempotent: push 10 lần thì chỉ phần thật sự thay đ�
 
 # Kịch bản demo (chuyển sang terminal)
 
-> Gợi ý chèn sau Slide 25 (Vault), hoặc sau Slide 28 nếu thời gian dư.
+> Gợi ý chèn sau Slide 27 (Terraform + Ansible). Lệnh chi tiết: `docs/Demo-Commands.md`.
+> Mạch kể: **"có mạng & quyền" → "có máy" → "máy chạy đúng"**.
 
-**Demo 1 — Kết nối, Vault & lần deploy đầu tiên**
-1. `ansible webservers -i inventory -m ping` → "Thấy `pong` nghĩa là SSH key và Python đều ổn."
-2. `cat roles/nginx/vars/vault.yml` → "Mật khẩu trang `/admin` nằm trong Git, nhưng chỉ thấy `$ANSIBLE_VAULT;1.1;AES256` và chuỗi mã hoá."
-3. Chạy thiếu mật khẩu → "Lỗi ngay lúc nạp `vars_files`, chưa đụng tới server."
-4. Thêm `--ask-vault-pass` → "Lần đầu: cài gói, render template, tạo htpasswd, bật service — nhiều task `changed`, handler restart nginx. Task htpasswd hiện `censored` nhờ `no_log`."
-5. `curl http://<ip>` → trang chào mừng; `curl http://<ip>/admin/` → **401**; `curl -u admin:<pass> .../admin/` → **200**. "Secret thật sự được dùng, và trên server chỉ lưu hash."
+**Phần A — Terraform: hạ tầng mạng & quyền**
+0. Khái niệm nhanh (~1 phút) → "Terraform là Infrastructure as Code: viết file mô tả hạ tầng, Terraform gọi API AWS để tạo. **Provider** = driver nói chuyện với AWS; **resource** = thứ cần tạo; **data source** = đọc thứ có sẵn; **module** = khối dùng lại, giống role; **state** = sổ ghi những gì đã tạo. Vòng đời: viết code → `plan` → `apply` → `destroy`."
+1. `cat main.tf` → "Environment chỉ ghép 3 module: security group, SSM role, EC2."
+2. Đọc `security-group` + `ssm-role` → "Không mở port 22; máy có IAM role SSM nên agent tự gọi ra AWS qua 443."
+3. `terraform plan` (15 resource) → `terraform apply -target=module.security_group -target=module.ssm_role` → "Dựng nền trước: 8 resource."
+4. `terraform state list` → "Terraform nhớ state — thứ Ansible không có."
 
-**Demo 2 — Idempotent & Handler**
-1. Chạy lại playbook → "Toàn `ok`, `changed` chỉ còn ở task shell cố ý viết sai, và **handler không chạy** vì config không đổi."
-2. Đổi `http_port` trong `defaults/main.yml` (vd 80 → 8080) → chạy lại → "Chỉ task template `changed`, handler restart đúng một lần."
+**Phần B — Terraform: tạo máy**
+1. Đọc `aws_instance` + `inventory.tf`; `ls inventory-terraform` → "Chưa có máy thì chưa có inventory."
+2. `terraform plan` chỉ còn 7 → "State đã có 8 resource hạ tầng, không tạo lại." `terraform apply` (~3 phút) → "Tự hiểu thứ tự: SG + IAM role trước, máy sau; 3 máy tạo song song." Vừa đợi vừa giải thích bước đợi cloud-init và SSH qua SSM.
+3. `terraform output` + `cat inventory-terraform` → "Có máy rồi, inventory tự sinh, không ai gõ IP."
 
-**Demo 3 — Shell vs `lineinfile`**
+**Phần C1–C2 — Kết nối, Vault & lần deploy đầu tiên**
+1. `ansible webservers -m ping` → "Thấy `pong`: SSH (qua SSM) và Python đều ổn, không cài agent."
+2. `ansible-vault create group_vars/webservers/vault.yml` → `cat` → "Chỉ thấy `$ANSIBLE_VAULT;1.1;AES256` và chuỗi mã hoá."
+3. Chạy thiếu mật khẩu → "Lỗi ngay đầu play khi nạp `group_vars`, chưa đụng tới server."
+4. Thêm `--ask-vault-pass` → "Lần đầu: nhiều task `changed`, handler restart nginx. Task htpasswd hiện `censored` nhờ `no_log`."
+5. `curl http://<ip>` → trang chào mừng; `/admin/` → **401**; `curl -u admin:<pass>` → **200**. "Trên server chỉ lưu hash."
+
+**Phần C3 — Idempotent & Handler**
+1. Chạy lại playbook → "Toàn `ok`, `changed=0`, **handler không chạy** vì config không đổi."
+2. Đổi `server_name` trong `defaults/main.yml` → `--check --diff` → chạy thật → "Chỉ template + `/etc/hosts` `changed`, handler restart đúng một lần."
+
+**Phần C4 — Shell vs `lineinfile`** (`idempotency-demo.yml`, chạy 3 lần)
 
 | | Task `shell` (`echo ... >>`) | Task `lineinfile` |
 |---|---|---|

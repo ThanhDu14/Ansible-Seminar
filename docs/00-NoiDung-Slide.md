@@ -153,7 +153,7 @@ managed ansible_host=192.168.56.20
 ```
 
 - Nhóm mặc định `all`; biến tách ra `group_vars/` và `host_vars/`.
-- Cụ thể hơn thắng: `host_vars` > `group_vars/<nhóm>` > `group_vars/all`.
+- Biến trùng tên → phạm vi hẹp ghi đè phạm vi rộng: `host_vars` (1 máy) > `group_vars/<nhóm>` > `group_vars/all`.
 
 **Slide 13. Playbook & Task**
 
@@ -185,13 +185,15 @@ roles/nginx/
 └── vars/main.yml       # biến cố định của role
 ```
 
+- Role = đóng gói task, handler, template, biến vào thư mục chuẩn.
+- Ansible tự nạp `main.yml` trong từng thư mục, không cần `include`.
 - Role không tự chạy; playbook gọi bằng `roles: [nginx]`.
-- Ưu tiên biến: `defaults` < `group_vars` < `host_vars` < `-e` (extra vars luôn thắng).
+- Secret để ở `group_vars/`, không nằm trong role → role dùng lại được ở môi trường khác.
 
 **Slide 15. Template Jinja2**
 - `{{ biến }}` in giá trị · `{% if %}` / `{% for %}` điều khiển · `{# #}` comment.
-- Filter hay dùng: `default(80)`, `join(' ')`.
-- Render **trên control node** rồi mới đẩy file sang máy đích.
+- Render **trên control node** rồi mới đẩy file sang máy đích → 1 template, mỗi máy / môi trường ra 1 file riêng.
+- `copy` chép nguyên văn (file tĩnh); `template` thay biến trước rồi mới chép.
 
 ```jinja
 server {
@@ -212,6 +214,7 @@ server {
 - Chỉ chạy khi task `notify` báo **`changed`** — config không đổi thì không restart.
 - Chạy **cuối play**, **1 lần mỗi host** dù được notify nhiều lần.
 - Tên trong `notify` phải khớp tên handler.
+- Có task lỗi giữa chừng → handler bị bỏ qua; thêm `force_handlers: true` để vẫn chạy.
 
 ```yaml
 - name: Render nginx.conf
@@ -243,7 +246,7 @@ Ghi chú: đề yêu cầu *restart*; thực tế nên dùng `state: reloaded` (
 | `mkdir -p /data` | `mkdir /data` (lần 2 lỗi) |
 | `echo X > file` | `echo X >> file` (nhân bản dòng) |
 
-**Slide 18. Khai báo vs Mệnh lệnh**
+**Slide 18. Ansible làm idempotent thế nào?** (khai báo vs mệnh lệnh + PLAY RECAP)
 - Shell script: *"làm thế nào"*. Ansible: *"kết quả cuối là gì"*.
 - Module: kiểm tra hiện trạng → khớp thì `ok`, lệch thì sửa vừa đủ → `changed`.
 
@@ -271,26 +274,43 @@ Ghi chú: đề yêu cầu *restart*; thực tế nên dùng `state: reloaded` (
 | Rủi ro shell injection | Thấp | Cao |
 
 - Bẫy: `command: echo data >> /tmp/x` → **không tạo file** (`>>` thành đối số) nhưng vẫn báo `changed`.
-- `raw` (không cần Python, dùng bootstrap) và `script` (chạy script có sẵn) chỉ dùng trường hợp đặc biệt.
+- `raw` (không cần Python, dùng để bootstrap) và `script` (chạy script có sẵn) chỉ dùng trong trường hợp đặc biệt.
 
-**Slide 21. Vì sao module chuyên dụng tốt hơn?**
-- `shell`/`command` là "hộp đen": Ansible chỉ thấy `rc`, `stdout` → **luôn báo `changed`**.
-- Module chuyên dụng kiểm tra trước khi làm:
-  - `copy`: so checksum, giống thì `ok`.
-  - `lineinfile`: dòng đã có thì `ok`, chưa có thì thêm.
-  - `systemd_service`: `state: started` chỉ khởi động khi đang dừng.
-- Kèm theo: hỗ trợ `--check`/`--diff`, trả dữ liệu có cấu trúc, an toàn hơn, dễ đọc.
+**Slide 21. Vì sao module chuyên dụng tốt hơn?** (sơ đồ 2 luồng)
+- `shell`/`command` = **hộp đen**: Lệnh → Chạy lệnh → `rc`, `stdout` → **luôn `changed`**.
+- Module chuyên dụng = **kiểm tra trước khi làm**: Trạng thái mong muốn → Đọc hiện trạng máy → Đã khớp? → có: `ok` / không: sửa vừa đủ → `changed`.
+- Kèm theo: hỗ trợ `--check`/`--diff`, trả dữ liệu có cấu trúc, an toàn hơn (không qua shell), dễ đọc.
 
-**Slide 22. Khi buộc phải dùng shell**
+**Slide 21b. Chạy lại lần 2: shell vs module**
+
+| Dùng shell | Lần 2 | Dùng module | Lần 2 |
+|---|---|---|---|
+| `mkdir /data` | lỗi (File exists) | `file: state=directory` | ok |
+| `echo ... >> sysctl.conf` | thêm dòng trùng | `lineinfile` | ok |
+| `useradd deploy` | lỗi (user exists) | `user: state=present` | ok |
+| `apt-get install nginx` | luôn changed | `apt: state=present` | ok |
+
+- Shell: lần 2 lỗi, nhân đôi cấu hình hoặc báo `changed` sai.
+- Module: lần 2 toàn `ok` → chạy lại bao nhiêu lần cũng an toàn.
+
+**Slide 22. Khi buộc phải dùng shell** (code bên trái, 2 hộp chú thích bên phải)
+- Không có module phù hợp → tự nói cho Ansible biết khi nào lệnh đã làm rồi.
 
 ```yaml
-- ansible.builtin.shell: tar -xzf app.tar.gz -C /opt/app
+- name: Giải nén app
+  ansible.builtin.shell: >
+    tar -xzf app.tgz -C /opt/app
   args:
-    creates: /opt/app/README     # đã có file này thì bỏ qua
+    creates: /opt/app/README
 
-- ansible.builtin.command: uname -r
-  changed_when: false            # lệnh chỉ đọc
+- name: Xem phiên bản kernel
+  ansible.builtin.command: uname -r
+  changed_when: false
 ```
+
+- `creates` / `removes`: file đã có (hoặc đã mất) → bỏ qua task, lần 2 báo `ok`.
+- `changed_when: false`: lệnh chỉ đọc → không bao giờ báo `changed`.
+- **Bổ sung**: `register` + `changed_when`/`failed_when` → tự đặt điều kiện theo output lệnh.
 
 ---
 
@@ -299,19 +319,29 @@ Ghi chú: đề yêu cầu *restart*; thực tế nên dùng `state: reloaded` (
 **Slide 23. Vault là gì?**
 - Secret để plain text trong Git sẽ lộ vĩnh viễn (Git nhớ lịch sử).
 - Vault mã hoá **AES256** → secret vẫn nằm trong Git nhưng đã mã hoá.
-- Lệnh: `create`, `encrypt`, `view`, `edit`, `decrypt`, `rekey`.
-- Chạy: `--ask-vault-pass` (chạy tay) hoặc `--vault-password-file` (tự động; file `chmod 600` + `.gitignore`).
+- Sơ đồ: `secret.yml` (bản rõ) ⇄ `vault.yml` (đã mã hoá) → `ansible-playbook`
+  - `encrypt` (rõ → mã hoá), `decrypt` (mã hoá → rõ), `create` tạo mới file mã hoá.
+  - Trên file mã hoá: `view`/`edit` xem, sửa; `rekey` đổi mật khẩu.
+  - `encrypt_string`: chỉ mã hoá 1 giá trị.
+  - Chạy playbook cần mật khẩu vault: `--ask-vault-pass` gõ tay, `--vault-password-file` đọc từ file (file `chmod 600` + `.gitignore`).
 
-**Slide 24. Cách tổ chức**
+**Slide 24. Cách tổ chức** (code có mũi tên chú thích)
 
+```yaml
+# group_vars/webservers/vars.yml  (công khai)
+admin_password: "{{ vault_admin_password }}"
+# group_vars/webservers/vault.yml  (đã mã hoá)
+vault_admin_password: "..."
+# roles/nginx/tasks/main.yml
+- name: Tạo file htpasswd cho /admin
+  ansible.builtin.copy:
+    content: "...{{ admin_password | password_hash }}"
+    dest: /etc/nginx/.htpasswd
+  no_log: true
 ```
-group_vars/web/
-├── vars.yml    # công khai:  app_secret: "{{ vault_app_secret }}"
-└── vault.yml   # ĐÃ MÃ HOÁ:  vault_app_secret: "..."
-```
 
-- Tiền tố `vault_` → grep được tên biến, biết ngay giá trị thật nằm trong vault.
-- Task dùng secret thêm `no_log: true` để không in secret ra màn hình.
+- `vault_` được tô đỏ, mũi tên chỉ sang hộp **Tiền tố `vault_`**: nhìn tên biến là biết giá trị thật nằm trong vault, grep là thấy.
+- `no_log: true` được tô đỏ, mũi tên chỉ sang hộp **`no_log: true`**: không in mật khẩu ra màn hình hay log.
 
 ---
 
@@ -325,7 +355,7 @@ group_vars/web/
 5. `curl http://192.168.56.20:<port>` kiểm chứng.
 
 **Slide 26. Demo 3 — Ansible Vault**
-1. `ansible-vault create group_vars/web/vault.yml` → `cat` thấy `$ANSIBLE_VAULT;1.1;AES256`.
+1. `ansible-vault create group_vars/webservers/vault.yml` → `cat` thấy `$ANSIBLE_VAULT;1.1;AES256`.
 2. Chạy playbook thiếu mật khẩu → lỗi; thêm `--ask-vault-pass` → chạy được.
 3. Trên managed node, file secret được tạo với quyền `0600`; output không lộ secret nhờ `no_log`.
 

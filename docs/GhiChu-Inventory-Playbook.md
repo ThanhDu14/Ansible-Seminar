@@ -77,7 +77,7 @@ inventory/
     └── web1.yml         # biến riêng cho host web1
 ```
 
-Quy tắc ưu tiên: **cụ thể hơn thắng** → `host_vars` > `group_vars/<nhóm>` > `group_vars/all`.
+Quy tắc ưu tiên: biến trùng tên thì **phạm vi hẹp ghi đè phạm vi rộng** → `host_vars` > `group_vars/<nhóm>` > `group_vars/all`.
 Ví dụ trong thư mục này: `http_port` = 80 cho cả nhóm, nhưng riêng `web1` = 8080.
 
 ### 1.5 Static vs Dynamic inventory
@@ -209,4 +209,4 @@ Chạy lần 2 → toàn `ok` → đó chính là idempotent.
 2. **Control node chạy được trên Windows không?** → Không trực tiếp; dùng WSL hoặc máy ảo Linux. Máy đích Windows thì được (qua WinRM).
 3. **`copy` khác `template`?** → `template` render biến Jinja2 trước khi copy.
 4. **`command` khác `shell`?** → `shell` chạy qua `/bin/sh` nên dùng được pipe `|`, `>`, biến môi trường; `command` thì không (an toàn hơn).
-5. **Biến trùng tên ở group_vars và host_vars thì lấy cái nào?** → host_vars (cụ thể hơn thắng).
+5. **Biến trùng tên ở group_vars và host_vars thì lấy cái nào?** → host_vars (phạm vi hẹp ghi đè phạm vi rộng).

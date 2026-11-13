@@ -24,15 +24,15 @@
 
 
 
-# Tao trang index.html chao muong
+# Tao trang index.html chao mung
 - name: Tao trang index.html mau cho Web Server
   ansible.builtin.copy:
     content: |
       <! formal html >
       <html>
-      <head><title>Ansible Demo Lab</title></head>
+      <head><title>Ansible Demo Lab 1</title></head>
       <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-        <h1 style="color: #2c3e50;">🚀 Welcome to Nginx Web Server!</h1>
+        <h1 style="color: #2c3e50; Welcome to Nginx Web Server!</h1>
         <p style="color: #27ae60; font-weight: bold;">Cai dat va cau hinh tu dong 100% bang Ansible Role</p>
       </body>
       </html>
@@ -48,6 +48,8 @@
     name: nginx
     state: started
     enabled: yes
+
+## Tao /etc/hosts cho test
 - name: Ghi server_name vao /etc/hosts
   ansible.builtin.lineinfile:
     path: /etc/hosts
@@ -58,11 +60,11 @@
     mode: '0644'
 
 
-# 5. Vault: mat khau admin (giai ma tu vault.yml) -> file htpasswd tren server
+# 5. Vault: mat khau admin (group_vars/webservers/vault.yml) -> file htpasswd tren server
 #    Server chi luu HASH, no_log de mat khau khong lot ra output/log
 - name: Tao file htpasswd cho trang /admin tu mat khau trong Ansible Vault
   ansible.builtin.copy:
-    content: "{{ admin_user }}:{{ vault_admin_password | password_hash('sha512', 'ansibleseminar') }}\n"
+    content: "{{ admin_user }}:{{ admin_password | password_hash('sha512', 'ansibleseminar') }}\n"
     dest: /etc/nginx/.htpasswd
     owner: root
     group: www-data

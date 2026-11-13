@@ -3,4 +3,4 @@ http_port: 80
 server_name: "demo.ansible.lab"
 document_root: "/var/www/html"
 
-admin_user: "admin"      # mat khau nam trong vars/vault.yml (vault_admin_password)
+admin_user: "admin"      # mat khau: admin_password (group_vars/webservers/vars.yml -> vault.yml)

@@ -1,0 +1,4 @@
+---
+# Bien cong khai cho nhom [webservers] - Ansible tu nap theo ten nhom trong inventory.
+# Gia tri that nam trong vault.yml (da ma hoa); o day chi tro toi bien vault_*.
+admin_password: "{{ vault_admin_password }}"

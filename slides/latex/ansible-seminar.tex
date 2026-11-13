@@ -148,41 +148,44 @@
 % =====================================================================
 
 \begin{frame}{Bức tranh tổng thể}
-  \centering\vspace{0.15cm}
+  \centering\vspace{0.35cm}
   \begin{tikzpicture}[
       nd/.style={rounded corners=3pt, fill=fitBlue, text=white, font=\small\bfseries,
-        minimum height=0.8cm, minimum width=2.5cm, align=center},
+        minimum height=0.85cm, minimum width=2.2cm, align=center},
       tk/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, font=\small,
         minimum height=0.65cm, minimum width=1.5cm},
       md/.style={rounded corners=2pt, draw=fitBlue!55, fill=white,
         font=\scriptsize\ttfamily, text=fitCode, minimum height=0.6cm,
-        text width=3.2cm, align=center},
+        text width=2.4cm, align=center},
       ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
+    % Hàng trên: Inventory -> Playbook -> Play
     \node[nd] (inv) at (0,0) {Inventory};
-    \node[nd] (pb) at (2.8,0) {Playbook};
-    \node[nd, text width=3.2cm] (play) at (6.0,0)
-      {Play\\[-2pt]{\scriptsize\mdseries nhóm máy + role cần chạy}};
-    \draw[ar] (inv) -- (pb); \draw[ar] (pb) -- (play);
+    \node[nd] (pb) at (2.7,0) {Playbook};
+    \node[nd, text width=3.4cm] (play) at (6.0,0)
+      {Play\\[-1pt]{\scriptsize\mdseries nhóm máy + role cần chạy}};
+    \draw[ar] (inv) -- (pb);
+    \draw[ar] (pb) -- (play);
 
-    \foreach \m/\y [count=\i] in {apt/-1.5, template/-2.45, service/-3.4} {
-      \node[tk] (t\i) at (4.0,\y) {Task \i};
-      \node[md] (m\i) at (7.2,\y) {module \m};
+    % Task treo ra từ đáy Play: một thân dọc, rẽ nhánh vào từng Task
+    \coordinate (trunk) at ([xshift=0.45cm]play.south west);
+    \foreach \m/\y [count=\i] in {apt/-1.45, template/-2.35, service/-3.25} {
+      \node[tk] (t\i) at (5.75,\y) {Task \i};
+      \node[md] (m\i) at (8.25,\y) {module \m};
       \draw[ar] (t\i) -- (m\i);
-      % đường nối đi dọc bên trái các Task, rồi rẽ vào mép trái Task
-      \draw[thick, fitBlue] ([xshift=-1.2cm]play.south west) |- (t\i.west);
+      \draw[thick, fitBlue] (trunk |- t\i.west) -- (t\i.west);
     }
-    % thân dọc nối từ Play xuống
-    \draw[thick, fitBlue] (play.west) -| ([xshift=-1.2cm]play.south west);
+    \draw[thick, fitBlue] (trunk) -- (trunk |- t3.west);
 
-    \node[nd, fill=fitGreen] (h) at (10.5,-2.45) {Handler};
-    \draw[ar, fitGreen] (m2.east) -- (h.west);
-    \node[font=\scriptsize\itshape, text=fitGreen, above=0.05cm of h] {notify};
+    % Handler
+    \node[nd, fill=fitGreen, minimum width=2.0cm] (h) at (11.65,-2.35) {Handler};
+    \draw[ar, fitGreen] (m2.east) -- node[above, font=\scriptsize\itshape, text=fitGreen] {notify} (h.west);
 
-    % Role
+    % Role bao quanh tasks + modules + handler
     \begin{scope}[on background layer]
-      \node[draw=fitBlue, dashed, rounded corners=5pt, fit=(t1)(m3)(h), inner sep=0.3cm] (role) {};
+      \node[draw=fitBlue, dashed, rounded corners=5pt,
+        fit=(trunk |- t1.north)(t1)(m3)(h), inner sep=0.3cm] (role) {};
     \end{scope}
-    \node[anchor=north, font=\small, align=center] at ([yshift=-0.1cm]role.south)
+    \node[anchor=north, font=\small, align=center] at ([yshift=-0.15cm]role.south -| 5.9,0)
       {\textbf{Role} = đóng gói tasks / handlers / templates / vars thành thư mục chuẩn};
   \end{tikzpicture}
 \end{frame}
@@ -203,8 +206,8 @@ ansible_user=ubuntu
       \begin{itemize}\setlength{\itemsep}{0.3cm}
         \item Inventory = \textbf{danh sách máy} Ansible quản lý, chia thành \textbf{nhóm}.
         \item Nhóm mặc định \code{all}; biến tách ra \code{group\_vars/} và \code{host\_vars/}.
-        \item \textbf{Cụ thể hơn thắng}:\\
-              \code{host\_vars} > \code{group\_vars/<nhóm>} > \code{group\_vars/all}.
+        \item Biến trùng tên $\rightarrow$\\ \textbf{phạm vi hẹp ghi đè phạm vi rộng}:\\
+              \code{host\_vars} > \code{group\_vars/<nhóm>}\\ > \code{group\_vars/all}
       \end{itemize}
     \end{column}
   \end{columns}
@@ -251,31 +254,29 @@ ansible_ssh_private_key_file=~/.ssh/ansible_lab
 
 \begin{frame}[fragile]{Playbook \& Task}
   \begin{columns}[c]
-    \begin{column}{0.4\textwidth}
-\begin{codeblock}{yaml}
-- name: Cài nginx
+    \begin{column}{0.5\textwidth}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
+# site.yml = Playbook (danh sách play)
+- name: Cài nginx          # <- Play
   hosts: webservers
   become: true
   tasks:
-    - name: Đảm bảo nginx đã cài
-      ansible.builtin.apt:
+    - name: Đảm bảo nginx đã cài  # <- Task
+      ansible.builtin.apt:        # module
         name: nginx
-        state: present
+        state: present    # trạng thái cần có
 \end{codeblock}
     \end{column}
-    \begin{column}{0.56\textwidth}
-      \begin{itemize}\small\setlength{\itemsep}{0.2cm}
-        \item \textbf{Play}: \code{hosts}, \code{become}, \code{vars},
-              \code{tasks} (chạy từ trên xuống), \code{handlers}.
+    \begin{column}{0.47\textwidth}
+      \begin{itemize}\small\setlength{\itemsep}{0.22cm}
+        \item \textbf{Playbook} = file YAML chứa 1+ \textbf{Play}.
+              Play = \code{hosts} + \code{tasks} (chạy từ trên xuống),
+              thêm \code{become}, \code{vars}, \code{handlers}.
         \item \textbf{Task} = \code{name} + module + tham số; hay kèm
               \code{when}, \code{loop}, \code{register}, \code{notify}.
-        \item \code{ansible.builtin.apt} = tên đầy đủ \textbf{(FQCN)}:
-              collection \code{ansible.builtin} + module \code{apt}.
-        \item \textbf{YAML}: thụt lề bằng \textbf{space}, \code{key: value},
-              list dùng \mbox{\code{-}.}
-        \item \textbf{Ad-hoc} (\code{ansible webservers -i inventory -m ping}): chạy \textbf{1 module, 1 lần}
-              từ dòng lệnh, không cần file. \textbf{Playbook}: nhiều task, lưu Git,
-              chạy lại được.
+        \item \code{state: present} = \textbf{khai báo}, không ra lệnh:
+              chưa có $\rightarrow$ cài (\code{changed}), có rồi $\rightarrow$ bỏ qua (\code{ok}).
+        \item \code{ansible.builtin.apt} = tên đầy đủ (FQCN). YAML thụt lề bằng \textbf{space}.
       \end{itemize}
     \end{column}
   \end{columns}
@@ -319,24 +320,32 @@ ansible_ssh_private_key_file=~/.ssh/ansible_lab
 
 \begin{frame}[fragile]{Role}
   \begin{columns}[c]
-    \begin{column}{0.56\textwidth}
+    \begin{column}{0.54\textwidth}
 \begin{codeblock}[minted options={fontsize=\scriptsize}]{text}
 roles/nginx/
 ├── defaults/main.yml       # biến mặc định
 ├── handlers/main.yml       # handler restart Nginx
 ├── tasks/main.yml          # các task triển khai
-├── templates/nginx.conf.j2 # template cấu hình
-└── vars/vault.yml          # secret đã mã hoá
+└── templates/nginx.conf.j2 # template cấu hình
+\end{codeblock}
+      \vspace{0.15cm}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
+# site.yml
+- hosts: webservers
+  become: true
+  roles:
+    - nginx
 \end{codeblock}
     \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{itemize}\setlength{\itemsep}{0.35cm}
-        \item Role \textbf{không tự chạy}; \code{site.yml} gọi bằng \code{roles: [nginx]}.
-        \item File Vault được nạp qua \code{vars\_files} trước khi role chạy.
-        \item Ưu tiên biến:\\
-              \code{defaults} < \code{group\_vars} < \code{host\_vars}
-              < \code{vars} (role) < \code{-e}\\
-              (extra vars \textbf{luôn thắng}).
+    \begin{column}{0.42\textwidth}
+      \begin{itemize}\setlength{\itemsep}{0.3cm}
+        \item Role = \textbf{đóng gói} task, handler, template, biến vào
+              \textbf{thư mục chuẩn}.
+        \item Ansible \textbf{tự nạp} \code{main.yml} trong từng thư mục,
+              không cần \code{include}.
+        \item Role \textbf{không tự chạy}: playbook gọi bằng \code{roles:}.
+        \item Secret để ở \code{group\_vars/}, \textbf{không} nằm trong role
+              $\rightarrow$ role \textbf{dùng lại} được ở môi trường khác.
       \end{itemize}
     \end{column}
   \end{columns}
@@ -344,57 +353,56 @@ roles/nginx/
 
 \begin{frame}[fragile]{Template Jinja2}
   \begin{columns}[t]
-    \begin{column}{0.5\textwidth}
-      \begin{itemize}\small
-        \item \code{\{\{ biến \}\}} in giá trị · \code{\{\% if \%\}} / \code{\{\% for \%\}}
-              điều khiển · \code{\{\# \#\}} comment.
-        \item Filter hay dùng: \code{default(80)}, \code{join(' ')}.
-        \item Render \textbf{trên control node} rồi mới đẩy file sang máy đích.
-      \end{itemize}
-      \vspace{0.2cm}
-      \begin{fittable}{>{\bfseries}l Y Y}
-        & \hd{\code{\color{white}copy}} & \hd{\code{\color{white}template}} \\
-        Nội dung & Nguyên văn & Render biến rồi đẩy \\
-        Dùng cho & File tĩnh & File đổi theo host/môi trường \\
-      \end{fittable}
-    \end{column}
-    \begin{column}{0.46\textwidth}
+    \begin{column}{0.49\textwidth}
+      {\small\textbf{nginx.conf.j2} (trong role)}
 \begin{codeblock}[minted options={fontsize=\scriptsize}]{jinja}
 server {
-    listen {{ http_port }} default_server;
+    listen {{ http_port }};
     server_name {{ server_name }};
     root {{ document_root }};
-    location / {
-        try_files $uri $uri/ =404;
-    }
+}
+\end{codeblock}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      {\small\textbf{Sau khi render} (file trên máy đích)}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{nginx}
+server {
+    listen 80;
+    server_name demo.ansible.lab;
+    root /var/www/html;
 }
 \end{codeblock}
     \end{column}
   \end{columns}
+  \vspace{0.3cm}
+  \begin{itemize}\small\setlength{\itemsep}{0.15cm}
+    \item \code{\{\{ biến \}\}} in giá trị; \code{\{\% if \%\}}, \code{\{\% for \%\}} để điều khiển;
+          \code{\{\# \#\}} là comment.
+    \item Render \textbf{trên control node} rồi mới đẩy file sang $\rightarrow$
+          \textbf{1 template, mỗi máy / môi trường ra 1 file riêng}.
+    \item \code{copy} chép \textbf{nguyên văn} (file tĩnh); \code{template} \textbf{thay biến} trước rồi mới chép.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Handler}
-  \begin{columns}[t]
+  \begin{columns}[c]
     \begin{column}{0.5\textwidth}
-      \begin{itemize}\setlength{\itemsep}{0.25cm}
+      \begin{itemize}\small\setlength{\itemsep}{0.25cm}
         \item Chỉ chạy khi task \code{notify} báo \textbf{\code{changed}} — config không đổi
               thì không restart.
         \item Chạy \textbf{cuối play}, \textbf{1 lần mỗi host} dù được notify nhiều lần.
         \item Tên trong \code{notify} phải \textbf{khớp} tên handler.
+        \item Có task \textbf{lỗi} giữa chừng $\rightarrow$ handler \textbf{bị bỏ qua};
+              thêm \code{force\_handlers: true} để vẫn chạy.
       \end{itemize}
-      \vspace{0.2cm}
-      \begin{fitnote}
-        Đề yêu cầu \emph{restart}; thực tế nên dùng \code{state: reloaded}
-        (không downtime) khi chỉ đổi config.
-      \end{fitnote}
     \end{column}
-    \begin{column}{0.46\textwidth}
+    \begin{column}{0.47\textwidth}
 \begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
-- name: Render nginx.conf
+# tasks/main.yml
+- name: Deploy cấu hình Nginx
   ansible.builtin.template:
     src: nginx.conf.j2
-    dest: >-
-      /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-available/default
   notify: Restart Nginx
 
 # handlers/main.yml
@@ -412,16 +420,15 @@ server {
 % =====================================================================
 
 \begin{frame}{Idempotent là gì?}
-  \begin{itemize}\setlength{\itemsep}{0.3cm}
-    \item \textbf{Idempotent} (tính luỹ đẳng): một thao tác áp dụng \textbf{nhiều lần}
-          cho \textbf{cùng kết quả} như áp dụng \textbf{một lần}.
-    \item Trong Ansible: chạy playbook \textbf{1 lần hay 100 lần} $\rightarrow$ máy luôn ở
-          \textbf{cùng trạng thái mong muốn}, không tác dụng phụ.
-          Lần đầu sửa những gì còn lệch (\code{changed}), các lần sau chỉ báo \code{ok}.
-    \item Ví dụ đời thường: bấm \textbf{nút tầng 5} thang máy nhiều lần vẫn chỉ đi tầng 5;
-          còn \textbf{công tắc đèn} bấm 2 lần thì về lại trạng thái cũ $\rightarrow$ không idempotent.
+  \begin{itemize}\setlength{\itemsep}{0.25cm}
+    \item \textbf{Idempotent} (luỹ đẳng): làm \textbf{nhiều lần} cho \textbf{cùng kết quả}
+          như làm \textbf{một lần}.
+    \item Ansible: chạy playbook \textbf{1 lần hay 100 lần}, máy luôn ở \textbf{cùng trạng thái mong muốn}.
+          Lần đầu sửa chỗ còn lệch (\code{changed}), các lần sau chỉ \code{ok}.
+    \item Đời thường: \textbf{nút tầng 5} thang máy bấm bao nhiêu lần cũng tới tầng 5 (idempotent);
+          \textbf{công tắc đèn} bấm 2 lần lại tắt (không idempotent).
   \end{itemize}
-  \vspace{0.3cm}
+  \vspace{0.25cm}
   \centering
   \begin{tikzpicture}[
       run/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
@@ -432,29 +439,39 @@ server {
     \node[run, right=1cm of r2] (rn) {\textbf{Lần N}\\\code{changed=0}};
     \draw[ar] (r1) -- (r2); \draw[ar] (r2) -- (rn);
   \end{tikzpicture}
-  \par\vspace{0.3cm}
+  \par\vspace{0.25cm}
   \begin{fitnote}
-    Vì sao là \textbf{cốt lõi}: chạy lại playbook luôn \textbf{an toàn} — sửa được máy bị lệch cấu hình,
-    chạy tiếp sau khi lỗi giữa chừng, không lo cài trùng hay ghi đè sai.
+    \textbf{Cốt lõi}: chạy lại playbook luôn \textbf{an toàn} — sửa máy lệch cấu hình,
+    chạy tiếp sau lỗi, thêm máy mới mà máy cũ không bị ảnh hưởng.
   \end{fitnote}
 \end{frame}
 
-\begin{frame}{Khai báo vs Mệnh lệnh}
+\begin{frame}[fragile]{Ansible làm idempotent thế nào?}
   \begin{columns}[c]
-    \begin{column}{0.48\textwidth}
-      \begin{itemize}\setlength{\itemsep}{0.35cm}
-        \item Shell script: \emph{``làm thế nào''}.\\
-              Ansible: \emph{``kết quả cuối là gì''}.
-        \item Module: \textbf{kiểm tra hiện trạng} $\rightarrow$ khớp thì \code{ok},
-              lệch thì sửa vừa đủ $\rightarrow$ \code{changed}.
-      \end{itemize}
+    \begin{column}{0.47\textwidth}
+      {\small\textbf{Mệnh lệnh} (shell) — \emph{``làm thế nào''}}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{bash}
+apt-get install -y nginx
+cp nginx.conf /etc/nginx/
+systemctl restart nginx  # luôn restart
+\end{codeblock}
+      \vspace{0.1cm}
+      {\small\textbf{Khai báo} (Ansible) — \emph{``kết quả cuối là gì''}}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
+ansible.builtin.apt:
+  name: nginx
+  state: present   # có rồi -> ok
+\end{codeblock}
+      \vspace{0.1cm}
+      {\small Module \textbf{kiểm tra hiện trạng} $\rightarrow$ khớp thì \code{ok},
+       lệch thì sửa vừa đủ $\rightarrow$ \code{changed}.}
     \end{column}
-    \begin{column}{0.48\textwidth}
+    \begin{column}{0.5\textwidth}
       \begin{fittable}{>{\ttfamily\color{fitCode}}l Y}
         \hd{PLAY RECAP} & \hd{Ý nghĩa} \\
-        ok & Thành công (bao gồm cả \code{changed}) \\
+        ok & Thành công (gồm cả \code{changed}) \\
         changed & Đã thay đổi máy đích \\
-        failed & Lỗi, dừng play trên host đó \\
+        failed & Lỗi, dừng trên host đó \\
         unreachable & Không SSH được tới host \\
         skipped & \code{when} trả về false \\
       \end{fittable}
@@ -462,70 +479,164 @@ server {
   \end{columns}
 \end{frame}
 
-\begin{frame}{Xem trước: \texttt{-{}-check} \& \texttt{-{}-diff}}
-  \begin{itemize}\setlength{\itemsep}{0.4cm}
-    \item \code{-{}-check}: \textbf{mô phỏng}, không đổi gì trên máy đích.
-    \item \code{-{}-diff}: hiện \textbf{dòng thêm/bớt} trong file.
-    \item Giới hạn: \code{shell}/\code{command} bị \textbf{skip} trong check mode
-          (trừ khi có \code{creates}/\code{removes}).
-  \end{itemize}
-  \vspace{0.4cm}
-  \begin{fitnote}
-    \code{ansible-playbook site.yml -{}-check -{}-diff} — xem trước thay đổi trước khi áp dụng thật.
-  \end{fitnote}
+\begin{frame}[fragile]{Xem trước: \texttt{-{}-check} \& \texttt{-{}-diff}}
+  \begin{columns}[c]
+    \begin{column}{0.44\textwidth}
+      \begin{itemize}\small\setlength{\itemsep}{0.25cm}
+        \item \code{-{}-check} (\code{-C}): \textbf{mô phỏng} — báo task nào \emph{sẽ}
+              \code{changed}, \textbf{không đổi gì} trên máy.
+        \item \code{-{}-diff} (\code{-D}): hiện dòng \textbf{thêm (+) / bớt (−)} trong file,
+              giống \code{git diff}.
+        \item Dùng chung để \textbf{xem trước} khi chạy thật trên production.
+        \item Giới hạn: \code{shell}/\code{command} bị \textbf{skip} trong check mode
+              (trừ khi có \code{creates}/\code{removes}).
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.54\textwidth}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{diff}
+$ ansible-playbook site.yml --check --diff
+
+TASK [nginx : Deploy cấu hình Nginx] ****
+--- before: /etc/nginx/sites-available/default
++++ after: nginx.conf.j2
+@@ -4 +4 @@
+-    server_name demo.ansible.lab;
++    server_name seminar.ansible.lab;
+changed: [web-1]
+\end{codeblock}
+      {\scriptsize\itshape Đổi \code{server\_name} rồi xem trước — file trên máy vẫn chưa đổi.}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % =====================================================================
 \section{Module chuyên dụng vs Shell}
 % =====================================================================
 
-\begin{frame}{\texttt{command} vs \texttt{shell}}
+\begin{frame}[fragile]{\texttt{command} vs \texttt{shell}}
   \begin{fittable}{>{\bfseries}p{4.2cm} Y Y}
     & \hd{\code{\color{white}command}} & \hd{\code{\color{white}shell}} \\
     Chạy qua \code{/bin/sh} & Không & Có \\
     Pipe, redirect, \code{\$VAR} & Không & Có \\
     Rủi ro shell injection & \textcolor{fitGreen}{\textbf{Thấp}} & \textcolor{fitRed}{\textbf{Cao}} \\
   \end{fittable}
-  \vspace{0.4cm}
-  \begin{itemize}\setlength{\itemsep}{0.25cm}
-    \item \textbf{Bẫy}: \code{command: echo data >> /tmp/x} $\rightarrow$ \textbf{không tạo file}
-          (\code{>>} thành đối số) nhưng vẫn báo \code{changed}.
-    \item \code{raw} (không cần Python, dùng bootstrap) và \code{script} (chạy script có sẵn)
-          chỉ dùng trường hợp đặc biệt.
-  \end{itemize}
+  \vspace{0.3cm}
+  {\small\textbf{Bẫy redirect}: cùng một lệnh, kết quả khác nhau}\par\vspace{-0.2cm}
+  \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
+- ansible.builtin.command:
+    cmd: echo data >> /tmp/x
+# stdout: "data >> /tmp/x"
+# KHÔNG tạo file, vẫn changed
+\end{codeblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
+- ansible.builtin.shell:
+    cmd: echo data >> /tmp/x
+# /bin/sh xử lý >>
+# ghi "data" vào /tmp/x
+\end{codeblock}
+    \end{column}
+  \end{columns}
+  \vspace{0.35cm}
+  {\small Ngoài ra: \code{raw} (không cần Python, dùng để bootstrap) và \code{script}
+   (chạy script có sẵn) chỉ dùng trong trường hợp đặc biệt.}
 \end{frame}
 
 \begin{frame}{Vì sao module chuyên dụng tốt hơn?}
+  \centering
+  \begin{tikzpicture}[
+      bx/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
+        font=\small, minimum height=0.85cm, minimum width=2.3cm},
+      bb/.style={rounded corners=3pt, fill=fitText!85, text=white, align=center,
+        font=\small\bfseries, minimum height=0.85cm, minimum width=2.3cm},
+      dm/.style={diamond, aspect=2, draw=fitBlue, thick, fill=white, align=center,
+        font=\scriptsize\bfseries, inner sep=1pt},
+      res/.style={rounded corners=3pt, text=white, font=\small\bfseries, align=center,
+        minimum height=0.7cm, minimum width=1.9cm},
+      ar/.style={-{Stealth[length=2mm]}, thick, fitBlue},
+      lb/.style={font=\small\bfseries, anchor=west}]
+    % --- shell / command
+    \node[lb] at (-0.2,0.9) {\code{shell} / \code{command}: \textcolor{fitRed}{hộp đen}};
+    \node[bx] (c1) at (1.0,0) {Lệnh};
+    \node[bb] (c2) at (4.0,0) {Chạy lệnh};
+    \node[bx] (c3) at (7.0,0) {\code{rc}, \code{stdout}};
+    \node[res, fill=fitRed] (c4) at (10.0,0) {\code{\color{white}changed}};
+    \draw[ar] (c1) -- (c2); \draw[ar] (c2) -- (c3); \draw[ar] (c3) -- (c4);
+    \node[font=\scriptsize\itshape, text=fitRed, below=0.08cm of c4] {lần nào cũng vậy};
+    % --- module
+    \node[lb] at (-0.2,-1.5) {Module chuyên dụng: \textcolor{fitGreen}{kiểm tra trước khi làm}};
+    \node[bx] (m1) at (1.0,-2.6) {Trạng thái\\[-2pt]mong muốn};
+    \node[bx] (m2) at (4.0,-2.6) {Đọc hiện\\[-2pt]trạng máy};
+    \node[dm] (m3) at (7.0,-2.6) {Đã khớp?};
+    \node[res, fill=fitGreen] (ok) at (10.0,-2.0) {\code{\color{white}ok}};
+    \node[res, fill=fitBlue] (ch) at (10.0,-3.2) {\code{\color{white}changed}};
+    \draw[ar] (m1) -- (m2); \draw[ar] (m2) -- (m3);
+    \draw[ar, fitGreen] (m3.north) |- node[pos=0.75, above, font=\scriptsize] {có} (ok.west);
+    \draw[ar] (m3.south) |- node[pos=0.3, below left, font=\scriptsize] {không: sửa vừa đủ} (ch.west);
+  \end{tikzpicture}
+  \par\vspace{0.3cm}
+  \begin{fitnote}
+    Kèm theo: hỗ trợ \code{-{}-check}/\code{-{}-diff}, trả dữ liệu có cấu trúc,
+    an toàn hơn (không qua shell), dễ đọc hơn.
+  \end{fitnote}
+\end{frame}
+
+\begin{frame}{Chạy lại lần 2: shell vs module}
+  \begin{fittable}{l Y l Y}
+    \hd{Dùng shell} & \hd{Lần 2} & \hd{Dùng module} & \hd{Lần 2} \\
+    \code{mkdir /data} & \textcolor{fitRed}{\textbf{lỗi}} {\scriptsize(File exists)}
+      & \code{file: state=directory} & \textcolor{fitGreen}{\textbf{ok}} \\
+    \code{echo ... >> sysctl.conf} & \textcolor{fitRed}{\textbf{thêm dòng trùng}}
+      & \code{lineinfile} & \textcolor{fitGreen}{\textbf{ok}} \\
+    \code{useradd deploy} & \textcolor{fitRed}{\textbf{lỗi}} {\scriptsize(user exists)}
+      & \code{user: state=present} & \textcolor{fitGreen}{\textbf{ok}} \\
+    \code{apt-get install nginx} & \textcolor{fitRed}{\textbf{luôn changed}}
+      & \code{apt: state=present} & \textcolor{fitGreen}{\textbf{ok}} \\
+  \end{fittable}
+  \vspace{0.45cm}
   \begin{itemize}\setlength{\itemsep}{0.2cm}
-    \item \code{shell}/\code{command} là \textbf{``hộp đen''}: Ansible chỉ thấy \code{rc},
-          \code{stdout} $\rightarrow$ \textbf{luôn báo \code{changed}}.
-    \item Module chuyên dụng \textbf{kiểm tra trước khi làm}:
-      \begin{itemize}
-        \item \code{copy}: so checksum, giống thì \code{ok}.
-        \item \code{lineinfile}: dòng đã có thì \code{ok}, chưa có thì thêm.
-        \item \code{systemd\_service}: \code{state: started} chỉ khởi động khi đang dừng.
-      \end{itemize}
-    \item Kèm theo: hỗ trợ \code{-{}-check}/\code{-{}-diff}, trả dữ liệu có cấu trúc,
-          an toàn hơn, dễ đọc.
+    \item Shell: lần 2 \textbf{lỗi}, \textbf{nhân đôi cấu hình} hoặc báo \code{changed} sai.
+    \item Module: lần 2 toàn \code{ok} $\rightarrow$ chạy lại bao nhiêu lần cũng \textbf{an toàn}.
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Khi buộc phải dùng shell}
-  \vspace{0.3cm}
-\begin{codeblock}{yaml}
-- ansible.builtin.shell: tar -xzf app.tar.gz -C /opt/app
+  \noindent{\small Không có module phù hợp $\rightarrow$ \textbf{tự nói cho Ansible biết} khi nào lệnh đã làm rồi.}
+  \par\vspace{0.3cm}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+\begin{codeblock}[minted options={fontsize=\scriptsize}]{yaml}
+- name: Giải nén app
+  ansible.builtin.shell: >
+    tar -xzf app.tgz -C /opt/app
   args:
-    creates: /opt/app/README     # đã có file này thì bỏ qua
+    creates: /opt/app/README
 
-- ansible.builtin.command: uname -r
-  changed_when: false            # lệnh chỉ đọc
+- name: Xem phiên bản kernel
+  ansible.builtin.command: uname -r
+  changed_when: false
 \end{codeblock}
-  \vspace{0.4cm}
-  \begin{itemize}\setlength{\itemsep}{0.25cm}
-    \item \code{creates} / \code{removes}: cho Ansible biết khi nào lệnh \textbf{đã làm rồi}
-          $\rightarrow$ bỏ qua, giữ idempotent.
-    \item \code{changed\_when: false}: lệnh chỉ đọc thì \textbf{không báo \code{changed}}.
-  \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \raggedright
+      \begin{fitnote}
+        \code{creates} / \code{removes}\\
+        File \textbf{đã có} (hoặc \textbf{đã mất}) $\rightarrow$ \textbf{bỏ qua} task,
+        lần 2 báo \code{ok}.
+      \end{fitnote}
+      \vspace{0.2cm}
+      \begin{fitnote}
+        \code{changed\_when: false}\\
+        Lệnh \textbf{chỉ đọc} $\rightarrow$ không bao giờ báo \code{changed}.
+      \end{fitnote}
+    \end{column}
+  \end{columns}
+  \vspace{0.3cm}
+  {\small \textbf{Bổ sung}: \code{register} + \code{changed\_when}/\code{failed\_when}
+   $\rightarrow$ tự đặt điều kiện theo output lệnh.}
 \end{frame}
 
 % =====================================================================
@@ -533,29 +644,99 @@ server {
 % =====================================================================
 
 \begin{frame}{Vault là gì?}
-  \begin{itemize}\setlength{\itemsep}{0.35cm}
+  \begin{itemize}\setlength{\itemsep}{0.15cm}
     \item Secret để \textbf{plain text} trong Git sẽ \textbf{lộ vĩnh viễn} (Git nhớ lịch sử).
     \item Vault mã hoá \textbf{AES256} $\rightarrow$ secret vẫn nằm trong Git nhưng đã mã hoá.
-    \item Lệnh: \code{create}, \code{encrypt}, \code{view}, \code{edit}, \code{decrypt}, \code{rekey};
-          \code{encrypt\_string} mã hoá \textbf{từng giá trị} (tên biến vẫn đọc được).
-    \item Chạy: \code{-{}-ask-vault-pass} (chạy tay) hoặc \code{-{}-vault-password-file}
-          (tự động; file \code{chmod 600} + \code{.gitignore}).
   \end{itemize}
+  \vspace{0.2cm}
+  \centering
+  \begin{tikzpicture}[
+      fl/.style={rounded corners=3pt, draw=fitBlue, thick, fill=fitLight, align=center,
+        font=\small, minimum height=1.0cm, minimum width=2.6cm},
+      vt/.style={rounded corners=3pt, fill=fitBlue, text=white, align=center,
+        font=\small, minimum height=1.0cm, minimum width=2.6cm},
+      pb/.style={rounded corners=3pt, fill=fitGreen, text=white, align=center,
+        font=\small\bfseries, minimum height=1.0cm, minimum width=2.6cm},
+      tg/.style={font=\scriptsize\ttfamily, text=fitCode},
+      ds/.style={font=\scriptsize, text=fitText},
+      ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
+    \node[fl] (plain) at (0,0) {\texttt{secret.yml}\\[-1pt]{\scriptsize bản rõ}};
+    \node[vt] (vault) at (5,0) {\texttt{vault.yml}\\[-1pt]{\scriptsize đã mã hoá}};
+    \node[pb] (run) at (10,0) {ansible-playbook};
+
+    % rõ <-> mã hoá
+    \draw[ar] ([yshift=0.25cm]plain.east) -- node[above, tg] {encrypt} ([yshift=0.25cm]vault.west);
+    \draw[ar] ([yshift=-0.25cm]vault.west) -- node[below, tg] {decrypt} ([yshift=-0.25cm]plain.east);
+
+    % thao tác trên file mã hoá
+    \node[tg, above=0.55cm of vault] (cr) {create};
+    \draw[ar] (cr) -- (vault);
+    \node[ds, right=0.05cm of cr] {tạo mới};
+    \node[below=0.35cm of vault, align=center, font=\scriptsize] (ve)
+      {\code{view} / \code{edit}: xem, sửa\\ \code{rekey}: đổi mật khẩu};
+    \draw[thick, fitBlue, dashed] (vault) -- (ve);
+
+    % chạy playbook
+    \draw[ar] (vault) -- (run);
+    \node[above=0.45cm of run, align=center, font=\scriptsize] (pw)
+      {\textbf{mật khẩu vault}\\ \code{-{}-ask-vault-pass}: gõ tay\\
+       \code{-{}-vault-password-file}: đọc từ file};
+    \draw[ar, fitGreen] (pw) -- (run);
+    \node[below=0.35cm of run, font=\scriptsize, text=fitComment, align=center]
+      {file mật khẩu: \code{chmod 600}\\ + \code{.gitignore}};
+
+    % encrypt_string
+    \node[below=0.35cm of plain, font=\scriptsize, align=center]
+      {\code{encrypt\_string}:\\ chỉ mã hoá 1 giá trị};
+  \end{tikzpicture}
 \end{frame}
 
-\begin{frame}[fragile]{Cách tổ chức}
-  \vspace{0.3cm}
-\begin{codeblock}{text}
-group_vars/web/
-├── vars.yml    # công khai:  app_secret: "{{ vault_app_secret }}"
-└── vault.yml   # ĐÃ MÃ HOÁ:  vault_app_secret: "..."
-\end{codeblock}
-  \vspace{0.4cm}
-  \begin{itemize}\setlength{\itemsep}{0.3cm}
-    \item Tiền tố \code{vault\_} $\rightarrow$ grep được tên biến, biết ngay giá trị thật
-          nằm trong vault.
-    \item Task dùng secret thêm \code{no\_log: true} để \textbf{không in secret} ra màn hình.
-  \end{itemize}
+\begin{frame}{Cách tổ chức}
+  \centering
+  \begin{tikzpicture}[
+      c/.style={anchor=base west, inner sep=0pt, outer sep=0pt,
+        font=\scriptsize\ttfamily, text=fitText},
+      cmt/.style={c, text=fitComment, font=\scriptsize\ttfamily\itshape},
+      hl/.style={c, fill=fitCode!15, text=fitCode, font=\scriptsize\ttfamily\bfseries,
+        inner xsep=0pt, inner ysep=1.5pt},
+      nt/.style={rounded corners=2pt, fill=fitLight, draw=fitBlue, thick, align=left,
+        text width=3.6cm, font=\small, inner sep=5pt},
+      ar/.style={-{Stealth[length=2mm]}, thick, fitBlue}]
+    % --- vars.yml
+    \node[cmt] (h1) at (0,0) {\# group\_vars/webservers/vars.yml \ (công khai)};
+    \node[c]  (a1) at (0,-0.42) {admin\_password: "\{\{\hphantom{x}};
+    \node[hl] (v1) at (a1.base east) {vault\_};
+    \node[c]  (b1) at (v1.base east) {admin\_password \}\}"};
+    % --- vault.yml
+    \node[cmt] (h2) at (0,-1.0) {\# group\_vars/webservers/vault.yml \ (đã mã hoá)};
+    \node[hl] (v2) at (0,-1.42) {vault\_};
+    \node[c]  (b2) at (v2.base east) {admin\_password: "..."};
+    % --- task (khối code thứ 2, tách riêng)
+    \node[cmt] (h3) at (0,-2.40) {\# roles/nginx/tasks/main.yml};
+    \node[c]  (t1) at (0,-2.82) {- name: Tạo file htpasswd cho /admin};
+    \node[c]  (t2) at (0,-3.22) {\hphantom{xx}ansible.builtin.copy:};
+    \node[c]  (t3) at (0,-3.62) {\hphantom{xxxx}content: "...\{\{ admin\_password | password\_hash \}\}"};
+    \node[c]  (t5) at (0,-4.02) {\hphantom{xxxx}dest: /etc/nginx/.htpasswd};
+    \node[c]  (t4) at (0,-4.42) {\hphantom{xx}};
+    \node[hl] (nl) at (t4.base east) {no\_log: true};
+
+    % nền khối code
+    \begin{scope}[on background layer]
+      \node[fill=fitLight, inner sep=5pt, fit=(h1)(b1)(h2)(b2)] (bg1) {};
+      \draw[fitBlue, line width=2pt] (bg1.north west) -- (bg1.south west);
+      \node[fill=fitLight, inner sep=5pt, fit=(h3)(t1)(t2)(t3)(t5)(nl)] (bg2) {};
+      \draw[fitBlue, line width=2pt] (bg2.north west) -- (bg2.south west);
+    \end{scope}
+
+    % chú thích
+    \node[nt, anchor=west] (n1) at (8.5,-0.75)
+      {\textbf{Tiền tố \code{vault\_}}\\ Nhìn tên biến là biết giá trị thật nằm trong vault, grep là thấy.};
+    \draw[ar] ([xshift=3pt]b1.east) -- ([yshift=3pt]n1.west);
+    \draw[ar] ([xshift=3pt,yshift=2pt]b2.east) -- ([yshift=-9pt]n1.west);
+    \node[nt, anchor=west] (n2) at (8.5,-4.35)
+      {\textbf{\code{no\_log: true}}\\ Không in mật khẩu ra màn hình hay log.};
+    \draw[ar] ([xshift=3pt]nl.east) -- (nl.east -| n2.west);
+  \end{tikzpicture}
 \end{frame}
 
 \begin{frame}{Hạn chế của Ansible}
